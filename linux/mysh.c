@@ -8,6 +8,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 void
 usage(char *prog) 
@@ -16,9 +18,26 @@ usage(char *prog)
   exit(1);
 }
 
+void shell() {
+  printf("mysh> \n");
+}
+
 int
-main(int argc, char *argv[])
-{
+main(int argc, char *argv[]) {
+
+  int rc = fork();
+
+  if (rc == 0) {
+    shell();
+    (void) wait(NULL);
+  } else if (rc >= 0) {
+    printf ("I am here\n");
+    while(1) {
+      ;
+    }
+  } else {
+    perror("Error in Forking!\n");
+  }
 
   return 0;
 }
