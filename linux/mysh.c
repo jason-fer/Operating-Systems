@@ -147,9 +147,6 @@ execute(char* line)
     (void) wait(NULL); 
     // @todo: don't wait if there's an ampersand "&"
 
-  } else {
-    perror("Error in Forking!\n");
-    exit(1);
   }
 }
 
