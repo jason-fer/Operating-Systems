@@ -1,12 +1,12 @@
 #/*****************************************************************************
 # Assignment 1A
 # FILENAME: Makefile
-# AUTHOR:   Jason Feriante
-# DATE:     25 Jan 2014
+# AUTHOR:   Jason Feriante & Rohit Kumar Jain
+# DATE:     8 Feb 2014
 # 
 # Usage: # shell% make
 # 
-# Email: feriante@wisc.edu
+# Email: feriante@cs.wisc.edu, rjain@cs.wisc.edu
 # Semester: CS537 Spring 2014
 # Section: LEC 001
 # Professor: Daniel Scott Myers
@@ -20,4 +20,4 @@ mysh:
 	$(CC) -o mysh mysh.c $(CFLAGS)
 
 clean:
-	rm -rf mysh.c
+	rm -rf mysh
