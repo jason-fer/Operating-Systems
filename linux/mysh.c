@@ -81,10 +81,10 @@ execute(char* line)
 {
   int rc = fork();
 
-  if(rc < 0){ // Failed to fork
-
-    fprintf(stderr, "fork() failed\n");
-    exit(1);
+  if (rc > 0) { // This is the parent
+    
+    (void) wait(NULL); 
+    // @todo: don't wait if there's an ampersand "&"
 
   } else if (rc == 0) { // This is the child
     
@@ -142,10 +142,10 @@ execute(char* line)
     execvp("ls", exec_args);
     printf("If you're reading this something went wrong!\n");*/
 
-  } else if (rc > 0) { // This is the parent
-    
-    (void) wait(NULL); 
-    // @todo: don't wait if there's an ampersand "&"
+  } else if(rc < 0){ // Failed to fork
+
+    fprintf(stderr, "fork() failed\n");
+    exit(1);
 
   }
 }
