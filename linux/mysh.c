@@ -3,12 +3,13 @@
  * Emulate the unix shell with fork(), exec(), wait(), etc.
  */
 
+#include <ctype.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <ctype.h>
 
 #define MAX_LINE_SIZE 512
 
@@ -87,7 +88,7 @@ execute(char* line)
 
   } else if (rc == 0) { // This is the child
     
-    // Check for build in commands
+    Check for build in commands -- do we need to fork on these?
     if (strcmpigwhite(line, "pwd") == 0) {
       char cwd[256];
       if (getcwd(cwd, sizeof(cwd)) == NULL) {
@@ -114,6 +115,32 @@ execute(char* line)
       argv[1] = NULL;
       execvp(*argv, argv);
     }*/
+
+    // Code from Daniel Myers (I guess Remzi gave very similar code)
+    /*char *exec_args[4];
+    exec_args[0] = "ls";
+    exec_args[1] = "-l";
+    exec_args[2] = "-a";
+    exec_args[3] = NULL;
+
+    // Close the FD associated with stdout
+    int close_rc = close(STDOUT_FILENO);
+    if (close_rc < 0) {
+      perror("close");
+      exit(1);
+    }
+
+    // // Open a new file
+    int fd = open("outfile.txt", O_RDWR | O_TRUNC, S_IRWXU);
+    if (fd < 0) {
+      perror("open");
+      exit(1);
+    }
+    printf("File descriptor number of new opened file = %d\n", fd);
+    printf("File descriptor number of stdout = %d\n", STDOUT_FILENO);
+
+    execvp("ls", exec_args);
+    printf("If you're reading this something went wrong!\n");*/
 
   } else if (rc > 0) { // This is the parent
     

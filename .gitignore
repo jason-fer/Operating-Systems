@@ -16,3 +16,7 @@
 #*.exe
 #*.out
 #*.app
+
+/linux/mysh
+
+/linux/outfile.txt
