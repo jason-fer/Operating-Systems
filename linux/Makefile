@@ -14,7 +14,7 @@
 CC     = gcc
 CFLAGS = -Wall -Werror
 
-all: mysh
+all: clean mysh
 
 mysh:
 	$(CC) -o mysh mysh.c $(CFLAGS)

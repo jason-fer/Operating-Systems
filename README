@@ -7,3 +7,9 @@
 | Section: LEC 001
 | Professor: Daniel Scott Myers
 +-------------------------------------------------------------------------------
+
+Project 2a: The Unix Shell
+Emulate a unix shell with fork(), exec(), and wait().
+
+
+Project 2b: xv6 Scheduler
