@@ -1,6 +1,8 @@
 /**
  * Mysh
- * Emulate the unix shell with fork(), exec(), wait(), etc.
+ * Emulate the unix shell behavior with fork(), exec(), wait(), etc. Allows
+ * some basic commands, as well as redirection. Also allows the "&" paramater
+ * to run a child process in the background.
  */
 
 #include <ctype.h>
@@ -10,7 +12,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <malloc.h>
+//#include <malloc.h>
 
 #define MAX_LINE_SIZE 512
 
@@ -24,29 +26,29 @@ prompt()
 }
 
 /**
- * Compare two strings; ignore whitespace. First strips all white-space, then
- * return the comparison. 
+ * Translate the line into a series of tokens which represent the provided 
+ * commands / parameters.
  */
-
 void
-tokenize(char* line,
-         char** token)
+tokenize(char* line, char** token)
 {
   int i = 0;
   token[i++] = strtok(line, " ");
 
-  while (token[i-1] != NULL) {
-    token[i++] = strtok(NULL, " ");
+  if(token != NULL){
+    while (token[i-1] != NULL) {
+      token[i++] = strtok(NULL, " ");
+    }
   }
+
 }
 
 /**
- * Execute the provided command
+ * Execute the tokenized commands / parameters
  */
 void 
 execute(char** argv) 
 {
-
   if (strcmp(argv[0], "cd") == 0) {
     char* home;
     
@@ -84,9 +86,8 @@ execute(char** argv)
       (void) wait(NULL); 
       exit(0);
     } else {
-      /*This is for standard commands!
-        We need to execute these commands 
-        using exec as the spec says on the page.*/
+      /* For standard commands, which we represent exactly as the user 
+      specified, without modification. */
       
       char* execStr;
       execStr = (char*)malloc(strlen(argv[0]) + strlen("/bin/") + 1);
@@ -97,7 +98,6 @@ execute(char** argv)
       printf("%s is not a recognized command\n", argv[0]);
       exit(0);
     }
-    
     
     /*// Close the FD associated with stdout
     int close_rc = close(STDOUT_FILENO);
@@ -140,17 +140,24 @@ main(int argc, char *argv[])
 
     if(fgets(line, MAX_LINE_SIZE, stdin)){
 
+      // Replace new line with a null-terminator
       size_t length = strlen(line) - 1;
-      if (line[length] == '\n')
+      if (line[length] == '\n'){
         line[length] = '\0';
+      }
 
+      // Tokenize the string into a series of commands / parameters
       char* token[20];
       tokenize(line, token);
+
+      // Prevent the program from crashing if the user only enters whitespace
+      if(token[0] == NULL) continue;
 
       if (strcmp(token[0], "exit") == 0) {
         // Exit must be done outside the forked process
         exit(0);
       } else {
+        // Run the user request
         execute(token);
       }
     }
