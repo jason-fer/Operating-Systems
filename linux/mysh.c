@@ -28,6 +28,15 @@ prompt()
 }
 
 /**
+ * Standard error message for all errors
+ */
+void
+error()
+{
+  char error_message[30] = "An error has occurred\n";
+  write(STDERR_FILENO, error_message, strlen(error_message));
+}
+/**
  * Translate the line into a series of tokens which represent the provided 
  * commands / parameters.
  */
@@ -90,7 +99,8 @@ execute(char** argv)
     if (strcmp(argv[0], "pwd") == 0) {
       char cwd[256];
       if (getcwd(cwd, sizeof(cwd)) == NULL) {
-        // perror("pwd error!!!!"); // What should the error be?
+        error();
+        exit(1);
       } else {
         printf("%s\n", cwd);
       }
