@@ -97,7 +97,6 @@ execute(char** argv)
 
     if(strcmp(argv[0], "wait") == 0){
       (void) wait(NULL);
-      // while ((rc = waitpid(-1, NULL, 0)));
     }
     
   } else if (rc == 0) { // This is the child
@@ -112,7 +111,7 @@ execute(char** argv)
       }
       exit(0);
     } else if (strcmp(argv[0], "wait") == 0) {
-      // We actually want the parent to wait, but we need this condition here.
+      // Nothing to do (this directive is for the parent process)
       exit(0);
     } else {
       /* For standard commands, which we represent exactly as the user 
