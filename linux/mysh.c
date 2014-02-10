@@ -16,8 +16,6 @@
 
 #define MAX_LINE_SIZE 512
 
-volatile int bgprocess = 0;
-
 /**
  * Let the user know we are ready for input
  */
@@ -45,23 +43,36 @@ void
 tokenize(char* line, char** token)
 {
   int i = 0;
-  char *last = NULL;
-
   token[i++] = strtok(line, " ");
 
   if(token[0] != NULL){
     while (token[i-1] != NULL) {
-      last = token[i-1];
       token[i++] = strtok(NULL, " ");
     }
   }
 
-  // Determine if this process should run in the background
-  bgprocess = 0;
-  if(last != NULL && last[strlen(last)-1] == '&'){
-    bgprocess = 1;
+}
+
+int
+containsAmpersand(char** token)
+{
+  int i = 0;
+  char *last = NULL;
+
+  while(token[i] != NULL) {
+    last = token[i++];
+  }
+
+  if(last != NULL && last[strlen(last)-1] == '&') {
+    if (strcmp(last, "&") == 0) {
+      token[i-1] = NULL;
+    } else {
+      token[i-1][strlen(last)-1] = '\0';
+    }
+    return 1;
   }
   
+  return 0;
 }
 
 /**
@@ -87,18 +98,17 @@ execute(char** argv)
 
 
   int rc = fork();
-
+  int bgprocess = containsAmpersand(argv);
+  
   if (rc > 0) { // This is the parent
     
-    // If bgprocess == 1, then we detected a final argument of ampersand "&"
-    if(bgprocess != 1){
+    // If containsAmpersand returns == 1, 
+    // then we detected a final argument of ampersand "&"
+    if ((bgprocess != 1) ||
+        (strcmp(argv[0], "wait") == 0)) {
       (void) wait(NULL);
-    }
+    } 
 
-    if(strcmp(argv[0], "wait") == 0){
-      (void) wait(NULL);
-    }
-    
   } else if (rc == 0) { // This is the child
     
     if (strcmp(argv[0], "pwd") == 0) {
@@ -163,7 +173,6 @@ main(int argc, char *argv[])
   char line[MAX_LINE_SIZE];
 
   while (1) {
-
     prompt();
 
     if(fgets(line, MAX_LINE_SIZE, stdin)){
