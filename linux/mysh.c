@@ -16,6 +16,8 @@
 
 #define MAX_LINE_SIZE 512
 
+int bgprocess = 0;
+
 /**
  * Let the user know we are ready for input
  */
@@ -33,14 +35,23 @@ void
 tokenize(char* line, char** token)
 {
   int i = 0;
+  char *last = NULL;
+
   token[i++] = strtok(line, " ");
 
-  if(token != NULL){
+  if(token[0] != NULL){
     while (token[i-1] != NULL) {
+      last = token[i-1];
       token[i++] = strtok(NULL, " ");
     }
   }
 
+  // Determine if this process should run in the background
+  bgprocess = 0;
+  if(last != NULL && last[strlen(last)-1] == '&'){
+    bgprocess = 1;
+  }
+  
 }
 
 /**
@@ -68,10 +79,12 @@ execute(char** argv)
   int rc = fork();
 
   if (rc > 0) { // This is the parent
-     
-    (void) wait(NULL); 
-    // @todo: don't wait if there's an ampersand "&"
-
+    
+    // If bgprocess == 1, then we detected a final argument of ampersand "&"
+    if(bgprocess != 1){
+      (void) wait(NULL);
+    }
+    
   } else if (rc == 0) { // This is the child
     
     if (strcmp(argv[0], "pwd") == 0) {
