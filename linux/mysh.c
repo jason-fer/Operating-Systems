@@ -53,8 +53,13 @@ tokenize(char* line, char** token)
 
 }
 
+/**
+ * Should the child process run in the background? Detect whether the final 
+ * argument was an ampersand "&". Returns "1" if an ampersand is detected, 
+ * and "0" otherwise.
+ */
 int
-containsAmpersand(char** token)
+runChildInBG(char** token)
 {
   int i = 0;
   char *last = NULL;
@@ -69,9 +74,11 @@ containsAmpersand(char** token)
     } else {
       token[i-1][strlen(last)-1] = '\0';
     }
+    // Ampersand detected: the child should run in the background
     return 1;
   }
   
+  // Ampersand not detected: the child should not run in the background
   return 0;
 }
 
@@ -101,9 +108,10 @@ execute(char** argv)
   
   if (rc > 0) { // This is the parent
     
-    // Detect an ampersand "&" in the final argument
-    if (containsAmpersand(argv) != 1){
-      // Wait by default
+    // The child process sould run in the background if an "&" ampersand is 
+    // passed is as the final parameter.
+    if (runChildInBG(argv) == 0){
+      // Wait because no final ampersand "&" parameter was detected
       (void) wait(NULL);
     } 
 
