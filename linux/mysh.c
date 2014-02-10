@@ -114,12 +114,17 @@ execute(char** argv)
     // The child process sould run in the background if an "&" ampersand is 
     // passed is as the final parameter.
     if (runChildProcInBg == 0){
+      printf("Waiting\n");
       // Wait because no final ampersand "&" parameter was detected
       (void) wait(NULL);
     } 
+    printf("Parent process ID is: %d and value of runChildProcInBg is = %d\n", getpid(), runChildProcInBg);
+
 
   } else if (rc == 0) { // This is the child
     
+    printf("Child process ID is: %d and value of runChildProcInBg is = %d\n", getpid(), runChildProcInBg);
+    printf("Parent's pid: %d\n", getppid());
     if (strcmp(argv[0], "pwd") == 0) {
       char cwd[256];
       if (getcwd(cwd, sizeof(cwd)) == NULL) {
