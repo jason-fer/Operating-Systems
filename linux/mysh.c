@@ -68,11 +68,12 @@ runChildInBG(char** token)
     last = token[i++];
   }
 
-  if(last != NULL && last[strlen(last)-1] == '&') {
+  if(last != NULL && last[strlen(last) - 1] == '&') {
     if (strcmp(last, "&") == 0) {
-      token[i-1] = NULL;
+      printf("token[i-1]: %s\n", token[i-1]);
+      token[i - 1] = NULL;
     } else {
-      token[i-1][strlen(last)-1] = '\0';
+      token[i - 1][strlen(last) - 1] = '\0';
     }
     // Ampersand detected: the child should run in the background
     return 1;
@@ -103,14 +104,16 @@ execute(char** argv)
     return;
   }
 
-
+  // This must be done before we fork since it strips the ampersand.
+  int runChildProcInBg = runChildInBG(argv);
   int rc = fork();
   
   if (rc > 0) { // This is the parent
     
+
     // The child process sould run in the background if an "&" ampersand is 
     // passed is as the final parameter.
-    if (runChildInBG(argv) == 0){
+    if (runChildProcInBg == 0){
       // Wait because no final ampersand "&" parameter was detected
       (void) wait(NULL);
     } 
