@@ -46,10 +46,27 @@ tokenize(char* line,
 void 
 execute(char** argv) 
 {
+
+  if (strcmp(argv[0], "cd") == 0) {
+    char* home;
+    
+    if (argv[1] == NULL) {
+      home = getenv("HOME");
+    } else {
+      home = argv[1];
+    }
+    
+    if(chdir(home) < 0){
+      fprintf(stderr, "%s is not a valid path\n", home);
+    }
+    return;
+  }
+
+
   int rc = fork();
 
   if (rc > 0) { // This is the parent
-    
+     
     (void) wait(NULL); 
     // @todo: don't wait if there's an ampersand "&"
 
@@ -62,13 +79,10 @@ execute(char** argv)
       } else {
         printf("%s\n", cwd);
       }
-    } else if (strcmp(argv[0], "cd") == 0) {
-      const char* home = getenv("HOME");
-      if(chdir(home) < 0){
-        // perror("cd error!!!!"); // What should the error be?
-      }
+      exit(0);
     } else if (strcmp(argv[0], "wait") == 0) {
       (void) wait(NULL); 
+      exit(0);
     } else {
       /*This is for standard commands!
         We need to execute these commands 
@@ -80,6 +94,8 @@ execute(char** argv)
       strcat(execStr, argv[0]);
       argv[0] = execStr;
       execvp(*argv, argv);
+      printf("%s is not a recognized command\n", argv[0]);
+      exit(0);
     }
     
     
