@@ -16,7 +16,7 @@
 
 #define MAX_LINE_SIZE 512
 
-int bgprocess = 0;
+volatile int bgprocess = 0;
 
 /**
  * Let the user know we are ready for input
@@ -36,6 +36,7 @@ error()
   char error_message[30] = "An error has occurred\n";
   write(STDERR_FILENO, error_message, strlen(error_message));
 }
+
 /**
  * Translate the line into a series of tokens which represent the provided 
  * commands / parameters.
@@ -93,6 +94,11 @@ execute(char** argv)
     if(bgprocess != 1){
       (void) wait(NULL);
     }
+
+    if(strcmp(argv[0], "wait") == 0){
+      (void) wait(NULL);
+      // while ((rc = waitpid(-1, NULL, 0)));
+    }
     
   } else if (rc == 0) { // This is the child
     
@@ -106,7 +112,7 @@ execute(char** argv)
       }
       exit(0);
     } else if (strcmp(argv[0], "wait") == 0) {
-      (void) wait(NULL); 
+      // We actually want the parent to wait, but we need this condition here.
       exit(0);
     } else {
       /* For standard commands, which we represent exactly as the user 
