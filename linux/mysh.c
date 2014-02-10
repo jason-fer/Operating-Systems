@@ -98,14 +98,12 @@ execute(char** argv)
 
 
   int rc = fork();
-  int bgprocess = containsAmpersand(argv);
   
   if (rc > 0) { // This is the parent
     
-    // If containsAmpersand returns == 1, 
-    // then we detected a final argument of ampersand "&"
-    if ((bgprocess != 1) ||
-        (strcmp(argv[0], "wait") == 0)) {
+    // Detect an ampersand "&" in the final argument
+    if (containsAmpersand(argv) != 1){
+      // Wait by default
       (void) wait(NULL);
     } 
 
@@ -193,6 +191,9 @@ main(int argc, char *argv[])
       if (strcmp(token[0], "exit") == 0) {
         // Exit must be done outside the forked process
         exit(0);
+      } else if(strcmp(token[0], "wait") == 0) {
+        // If we fork, then this 'wait' will not work as expected
+        (void) wait(NULL);
       } else {
         // Run the user request
         execute(token);
