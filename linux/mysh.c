@@ -70,7 +70,6 @@ runChildInBG(char** token)
 
   if(last != NULL && last[strlen(last) - 1] == '&') {
     if (strcmp(last, "&") == 0) {
-      printf("token[i-1]: %s\n", token[i-1]);
       token[i - 1] = NULL;
     } else {
       token[i - 1][strlen(last) - 1] = '\0';
@@ -110,21 +109,20 @@ execute(char** argv)
   
   if (rc > 0) { // This is the parent
     
-
     // The child process sould run in the background if an "&" ampersand is 
     // passed is as the final parameter.
     if (runChildProcInBg == 0){
-      printf("Waiting\n");
+      int stat;
       // Wait because no final ampersand "&" parameter was detected
-      (void) wait(NULL);
+      int pid = waitpid(rc, &stat, WUNTRACED);
+      if (pid < 0) {
+        char error_message[30] = "An error has occurred\n";
+        write(STDERR_FILENO, error_message, strlen(error_message));
+      }
     } 
-    printf("Parent process ID is: %d and value of runChildProcInBg is = %d\n", getpid(), runChildProcInBg);
-
-
+    return;
   } else if (rc == 0) { // This is the child
     
-    printf("Child process ID is: %d and value of runChildProcInBg is = %d\n", getpid(), runChildProcInBg);
-    printf("Parent's pid: %d\n", getppid());
     if (strcmp(argv[0], "pwd") == 0) {
       char cwd[256];
       if (getcwd(cwd, sizeof(cwd)) == NULL) {
