@@ -270,10 +270,31 @@ main(int argc, char *argv[])
 {
   char line[MAX_LINE_SIZE];
 
-  while (1) {
-    prompt();
+  char* fileName;
+  FILE* fp;
+  if (argc == 2) {
+    fileName = argv[1];
+    fp = fopen(fileName, "r");
+    if (!fp) {
+      perror("open");
+      exit(0);
+    }
+  } else if (argc > 2) {
+    printf("Wrong Usage\n");
+  } else {
+    fp = stdin;
+  }
 
-    if(fgets(line, MAX_LINE_SIZE, stdin)){
+  while (1) {
+    if (argc == 1) {
+      prompt();
+    }
+    
+    if(fgets(line, MAX_LINE_SIZE, fp)){
+
+      if (argc == 2) {
+        printf("%s", line);
+      }
 
       // Replace new line with a null-terminator
       size_t length = strlen(line) - 1;
@@ -293,7 +314,8 @@ main(int argc, char *argv[])
         exit(0);
       } else if(strcmp(token[0], "wait") == 0) {
         // If we fork, then this 'wait' will not work as expected
-        (void) wait(NULL);
+        int stat;
+        (void) waitpid(-1, &stat, WUNTRACED);
       } else {
         // Run the user request
         execute(token);
