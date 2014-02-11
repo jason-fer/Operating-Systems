@@ -82,6 +82,49 @@ runChildInBG(char** token)
   return 0;
 }
 
+/*
+  Checks whether redirection needs to be done.
+  If there is an ">" it returns the file name.
+  Also modifies the arguments accordingly.
+  Else returns NULL.
+ */
+
+char*
+doRedirection(char** token)
+{
+  char line[512];
+  int i = 1;
+  
+  if (token[0] == NULL) {
+    return strdup("\0");
+  }
+  
+  strcpy(line, token[0]);
+
+  while(token[i] != NULL) {
+    strcat(line, token[i]);
+    ++i;
+  }
+  
+  char* filePos = strchr(line, '>');
+  
+  if (filePos) {
+    i = 0;
+    token[i++] = strtok(line, ">");
+
+    if(token[0] != NULL){
+      while (token[i-1] != NULL) {
+        token[i++] = strtok(NULL, ">");
+      }
+    }
+    token[i] = NULL;
+    
+    return (strdup(filePos+1));
+  }
+
+  return strdup("\0");
+}
+
 /**
  * Execute the tokenized commands / parameters
  */
@@ -108,7 +151,6 @@ execute(char** argv)
   int rc = fork();
   
   if (rc > 0) { // This is the parent
-    
     // The child process sould run in the background if an "&" ampersand is 
     // passed is as the final parameter.
     if (runChildProcInBg == 0){
@@ -123,6 +165,28 @@ execute(char** argv)
     return;
   } else if (rc == 0) { // This is the child
     
+    char* fileName = doRedirection(argv);
+    printf ("This is the fileName after checking for argv %s\n", fileName);
+
+    if (strcmp(fileName, "\0") != 0) {
+      printf ("Closing stdout\n");
+      int close_rc = close(STDOUT_FILENO);
+      if (close_rc < 0) {
+        perror("close");
+        exit(1);
+      }
+      
+      // Open a new file
+      int fd = open(fileName, O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
+      /* printf("File descriptor number of new opened file = %d\n", fd); */
+      /* printf("File descriptor number of stdout = %d\n\n", STDOUT_FILENO); */
+ 
+      if (fd < 0) {
+        perror("open");
+        exit(1);
+      }
+    }
+
     if (strcmp(argv[0], "pwd") == 0) {
       char cwd[256];
       if (getcwd(cwd, sizeof(cwd)) == NULL) {
@@ -150,20 +214,6 @@ execute(char** argv)
     }
     
     /*// Close the FD associated with stdout
-    int close_rc = close(STDOUT_FILENO);
-    if (close_rc < 0) {
-      perror("close");
-      exit(1);
-    }
-
-    // // Open a new file
-    int fd = open("outfile.txt", O_RDWR | O_TRUNC, S_IRWXU);
-    if (fd < 0) {
-      perror("open");
-      exit(1);
-    }
-    printf("File descriptor number of new opened file = %d\n", fd);
-    printf("File descriptor number of stdout = %d\n", STDOUT_FILENO);
 
     execvp("ls", exec_args);
     printf("If you're reading this something went wrong!\n");*/
