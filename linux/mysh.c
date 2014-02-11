@@ -100,29 +100,59 @@ doRedirection(char** token)
   }
   
   strcpy(line, token[0]);
-
+  
   while(token[i] != NULL) {
     strcat(line, token[i]);
     ++i;
-  }
+  } 
   
-  char* filePos = strchr(line, '>');
-  
-  if (filePos) {
-    i = 0;
-    token[i++] = strtok(line, ">");
-
-    if(token[0] != NULL){
-      while (token[i-1] != NULL) {
-        token[i++] = strtok(NULL, ">");
-      }
+  int countRedirects = 0;
+  int pos;
+  for (pos = 0; line[pos]; ++pos) {
+    if (line[pos] == '>') {
+      ++countRedirects;
     }
-    token[i] = NULL;
-    
-    return (strdup(filePos+1));
   }
 
-  return strdup("\0");
+  if (countRedirects > 1) {
+    perror("Too many redirects\n");
+    exit(-1);
+  }
+
+  char* filePos = strchr(line, '>');
+
+  if (!filePos) {
+    return strdup("\0");
+  }
+
+  /* if (strcmp(token[i-1][0], ">") != 0) { */
+  char* searchingLastTok = strchr(token[i-1], '>');
+  char* penultimateTok = NULL;
+
+  if (i > 2) {
+    penultimateTok = strchr(token[i-2], '>');
+  }
+
+  if (searchingLastTok || penultimateTok) {
+
+    /* printf("Command: %s\n", token[0]); */
+    
+    int found = 0;
+    int i = 0;
+    while (token[i]) {
+      if (strchr(token[i],'>') || found) {
+        token[i] = NULL;
+        found = 1;
+      }
+      ++i;
+    }
+    
+    /* printf("File name: %s\n", filePos+1); */
+    return (strdup(filePos+1));
+  } else {
+    perror("Invalid syntax\n");
+    exit(-1);
+  }
 }
 
 /**
@@ -166,10 +196,16 @@ execute(char** argv)
   } else if (rc == 0) { // This is the child
     
     char* fileName = doRedirection(argv);
-    printf ("This is the fileName after checking for argv %s\n", fileName);
+    /* int i = 0; */
+    /* while (argv[i]) { */
+    /*   printf("%s ", argv[i]); */
+    /*   ++i; */
+    /* } */
+    /* printf ("\n"); */
+    /* printf ("This is the fileName after checking for argv %s\n", fileName); */
 
     if (strcmp(fileName, "\0") != 0) {
-      printf ("Closing stdout\n");
+      /* printf ("Closing stdout\n"); */
       int close_rc = close(STDOUT_FILENO);
       if (close_rc < 0) {
         perror("close");
