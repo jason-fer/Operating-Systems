@@ -82,13 +82,10 @@ runChildInBG(char** token)
   return 0;
 }
 
-/*
-  Checks whether redirection needs to be done.
-  If there is an ">" it returns the file name.
-  Also modifies the arguments accordingly.
-  Else returns NULL.
+/**
+ * Checks whether redirection needs to be done. If there is an ">" it returns 
+ * the file name. Also modifies the arguments accordingly. Else returns NULL.
  */
-
 char*
 doRedirection(char** token)
 {
@@ -271,7 +268,7 @@ main(int argc, char *argv[])
   char line[MAX_LINE_SIZE];
 
   char* fileName;
-  FILE* fp;
+  FILE* fp = NULL;
   if (argc == 2) {
     fileName = argv[1];
     fp = fopen(fileName, "r");
