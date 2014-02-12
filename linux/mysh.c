@@ -50,7 +50,6 @@ tokenize(char* line, char** token)
       token[i++] = strtok(NULL, " ");
     }
   }
-
 }
 
 /**
@@ -185,8 +184,7 @@ execute(char** argv)
       // Wait because no final ampersand "&" parameter was detected
       int pid = waitpid(rc, &stat, WUNTRACED);
       if (pid < 0) {
-        char error_message[30] = "An error has occurred\n";
-        write(STDERR_FILENO, error_message, strlen(error_message));
+        error();
       }
     } 
     return;
