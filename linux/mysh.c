@@ -22,7 +22,7 @@
 void 
 prompt() 
 {
-  printf("mysh> ");
+  write(STDOUT_FILENO,"mysh> ", 2);
 }
 
 /**
@@ -131,7 +131,7 @@ doRedirection(char** token)
 
   if (searchingLastTok || penultimateTok) {
 
-    /* printf("Command: %s\n", token[0]); */
+    /* write(STDOUT_FILENO,"Command: %s\n", token[0]); */
     
     int found = 0;
     int i = 0;
@@ -143,7 +143,7 @@ doRedirection(char** token)
       ++i;
     }
     
-    /* printf("File name: %s\n", filePos+1); */
+    /* write(STDOUT_FILENO,"File name: %s\n", filePos+1); */
     return (strdup(filePos+1));
   } else {
     perror("Invalid syntax\n");
@@ -193,7 +193,7 @@ execute(char** argv)
     char* fileName = doRedirection(argv);
     /* int i = 0; */
     /* while (argv[i]) { */
-    /*   printf("%s ", argv[i]); */
+    /*   write(STDOUT_FILENO,"%s ", argv[i]); */
     /*   ++i; */
     /* } */
     /* printf ("\n"); */
@@ -209,8 +209,8 @@ execute(char** argv)
       
       // Open a new file
       int fd = open(fileName, O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
-      /* printf("File descriptor number of new opened file = %d\n", fd); */
-      /* printf("File descriptor number of stdout = %d\n\n", STDOUT_FILENO); */
+      /* write(STDOUT_FILENO,"File descriptor number of new opened file = %d\n", fd); */
+      /* write(STDOUT_FILENO,"File descriptor number of stdout = %d\n\n", STDOUT_FILENO); */
  
       if (fd < 0) {
         perror("open");
@@ -235,8 +235,8 @@ execute(char** argv)
       specified, without modification. */
       
       char* execStr;
-      execStr = (char*)malloc(strlen(argv[0]) + strlen("/bin/") + 1);
-      strcat(execStr, "/bin/");
+      execStr = (char*)malloc(strlen(argv[0]) + /* strlen("/bin/") */ + 1);
+      /* strcat(execStr, "/bin/"); */
       strcat(execStr, argv[0]);
       argv[0] = execStr;
       execvp(*argv, argv);
@@ -247,7 +247,7 @@ execute(char** argv)
     /*// Close the FD associated with stdout
 
     execvp("ls", exec_args);
-    printf("If you're reading this something went wrong!\n");*/
+    write(STDOUT_FILENO,"If you're reading this something went wrong!\n");*/
 
   } else if(rc < 0){ // Failed to fork
 
@@ -275,7 +275,7 @@ main(int argc, char *argv[])
       exit(0);
     }
   } else if (argc > 2) {
-    printf("Wrong Usage\n");
+    write(STDOUT_FILENO,"Wrong Usage\n", 2);
   } else {
     fp = stdin;
   }
@@ -288,7 +288,7 @@ main(int argc, char *argv[])
     if(fgets(line, MAX_LINE_SIZE, fp)){
 
       if (argc == 2) {
-        printf("%s", line);
+        write(STDOUT_FILENO, line, strlen(line));
       }
 
       // Replace new line with a null-terminator
@@ -314,6 +314,11 @@ main(int argc, char *argv[])
       } else {
         // Run the user request
         execute(token);
+      }
+    } else {
+      if (argc == 2) {
+        fclose(fp);
+        exit(0);
       }
     }
   }
