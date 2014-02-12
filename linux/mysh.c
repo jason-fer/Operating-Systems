@@ -50,7 +50,6 @@ tokenize(char* line, char** token)
       token[i++] = strtok(NULL, " ");
     }
   }
-
 }
 
 /**
@@ -82,13 +81,10 @@ runChildInBG(char** token)
   return 0;
 }
 
-/*
-  Checks whether redirection needs to be done.
-  If there is an ">" it returns the file name.
-  Also modifies the arguments accordingly.
-  Else returns NULL.
+/**
+ * Checks whether redirection needs to be done. If there is an ">" it returns 
+ * the file name. Also modifies the arguments accordingly. Else returns NULL.
  */
-
 char*
 doRedirection(char** token)
 {
@@ -188,8 +184,7 @@ execute(char** argv)
       // Wait because no final ampersand "&" parameter was detected
       int pid = waitpid(rc, &stat, WUNTRACED);
       if (pid < 0) {
-        char error_message[30] = "An error has occurred\n";
-        write(STDERR_FILENO, error_message, strlen(error_message));
+        error();
       }
     } 
     return;
@@ -271,7 +266,7 @@ main(int argc, char *argv[])
   char line[MAX_LINE_SIZE];
 
   char* fileName;
-  FILE* fp;
+  FILE* fp = NULL;
   if (argc == 2) {
     fileName = argv[1];
     fp = fopen(fileName, "r");
