@@ -22,7 +22,7 @@
 void 
 prompt() 
 {
-  write(STDOUT_FILENO,"mysh> ", 2);
+  write(STDOUT_FILENO,"mysh> ", strlen("mysh> "));
 }
 
 /**
@@ -111,7 +111,7 @@ doRedirection(char** token)
   }
 
   if (countRedirects > 1) {
-    perror("Too many redirects\n");
+    error();
     exit(-1);
   }
 
@@ -146,7 +146,7 @@ doRedirection(char** token)
     /* write(STDOUT_FILENO,"File name: %s\n", filePos+1); */
     return (strdup(filePos+1));
   } else {
-    perror("Invalid syntax\n");
+    error();
     exit(-1);
   }
 }
