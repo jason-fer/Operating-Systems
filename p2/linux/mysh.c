@@ -240,7 +240,7 @@ execute(char** argv)
       strcat(execStr, argv[0]);
       argv[0] = execStr;
       execvp(*argv, argv);
-      printf("%s is not a recognized command\n", argv[0]);
+      // printf("%s is not a recognized command\n", argv[0]);
       exit(0);
     }
     
