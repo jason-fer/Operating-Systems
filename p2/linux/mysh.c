@@ -112,7 +112,7 @@ doRedirection(char** token)
 
   if (countRedirects > 1) {
     error();
-    exit(-1);
+    exit(1);
   }
 
   char* filePos = strchr(line, '>');
@@ -271,8 +271,8 @@ main(int argc, char *argv[])
     fileName = argv[1];
     fp = fopen(fileName, "r");
     if (!fp) {
-      perror("open");
-      exit(0);
+      error();
+      exit(1);
     }
   } else if (argc > 2) {
     write(STDOUT_FILENO,"Wrong Usage\n", 2);
