@@ -167,7 +167,7 @@ execute(char** argv)
     }
     
     if(chdir(home) < 0){
-      fprintf(stderr, "%s is not a valid path\n", home);
+      error(); // "home" is not a valid path
     }
     return;
   }
@@ -203,7 +203,7 @@ execute(char** argv)
       /* printf ("Closing stdout\n"); */
       int close_rc = close(STDOUT_FILENO);
       if (close_rc < 0) {
-        perror("close");
+        error(); // Error closing file
         exit(1);
       }
       
@@ -220,6 +220,9 @@ execute(char** argv)
 
     if (strcmp(argv[0], "pwd") == 0) {
       char cwd[256];
+
+      // @todo: test badpwd FAILED (error on additional arguments)
+
       if (getcwd(cwd, sizeof(cwd)) == NULL) {
         error();
         exit(1);
@@ -267,6 +270,8 @@ main(int argc, char *argv[])
 
   char* fileName;
   FILE* fp = NULL;
+
+  // Batch file handling
   if (argc == 2) {
     fileName = argv[1];
     fp = fopen(fileName, "r");
@@ -305,10 +310,15 @@ main(int argc, char *argv[])
       // Prevent the program from crashing if the user only enters whitespace
       if(token[0] == NULL) continue;
 
+
       if (strcmp(token[0], "exit") == 0) {
+        // We only expect one argument
+        if(token[1] != NULL){ error(); exit(0); }
         // Exit must be done outside the forked process
         exit(0);
       } else if(strcmp(token[0], "wait") == 0) {
+        // We only expect one argument
+        if(token[1] != NULL){ error(); exit(0); }
         // If we fork, then this 'wait' will not work as expected
         int stat;
         (void) waitpid(-1, &stat, WUNTRACED);
@@ -317,6 +327,7 @@ main(int argc, char *argv[])
         execute(token);
       }
     } else {
+      // Batch file handling
       if (argc == 2) {
         fclose(fp);
         exit(0);
