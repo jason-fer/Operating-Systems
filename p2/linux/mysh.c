@@ -213,7 +213,7 @@ execute(char** argv)
       /* write(STDOUT_FILENO,"File descriptor number of stdout = %d\n\n", STDOUT_FILENO); */
  
       if (fd < 0) {
-        perror("open");
+        error(); // Error opening file
         exit(1);
       }
     }
@@ -240,8 +240,8 @@ execute(char** argv)
       strcat(execStr, argv[0]);
       argv[0] = execStr;
       execvp(*argv, argv);
-      // printf("%s is not a recognized command\n", argv[0]);
-      exit(0);
+      error(); // We got an unrecognized command in argv[0]
+      exit(1);
     }
     
     /*// Close the FD associated with stdout
@@ -275,7 +275,8 @@ main(int argc, char *argv[])
       exit(1);
     }
   } else if (argc > 2) {
-    write(STDOUT_FILENO,"Wrong Usage\n", 2);
+    error();
+    exit(1);
   } else {
     fp = stdin;
   }

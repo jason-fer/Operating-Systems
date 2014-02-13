@@ -26,7 +26,7 @@ Test basic
 run a single command with no arguments
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/basic/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/basic/in
 
 
 test basic PASSED
@@ -40,7 +40,7 @@ Test blank
 an empty batch file
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/blank/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/blank/in
 
 
 test blank PASSED
@@ -54,7 +54,7 @@ Test multiline
 two single line commands
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/multiline/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/multiline/in
 
 
 test multiline PASSED
@@ -68,7 +68,7 @@ Test parseargs
 a command with an argument
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/parseargs/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/parseargs/in
 
 
 test parseargs PASSED
@@ -82,7 +82,7 @@ Test parseargs2
 a command with many arguments
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/parseargs2/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/parseargs2/in
 
 
 test parseargs2 PASSED
@@ -96,7 +96,7 @@ Test parseargs3
 successfully parse indirection and background symbols
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/parseargs3/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/parseargs3/in
 Failure: ./mysh gave incorrect standard output.
 Expected: "rm -f 1.out\necho hello>1.out&\nwait\ncat 1.out\nhello\n"
 Got:      "rm -f 1.out\necho hello>1.out&\nwait\ncat 1.out\n\n"
@@ -114,7 +114,7 @@ Test exit
 the builtin exit command
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/exit/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/exit/in
 
 
 test exit PASSED
@@ -128,7 +128,7 @@ Test pwd
 the builtin pwd command
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/pwd/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/pwd/in
 
 
 test pwd PASSED
@@ -142,7 +142,7 @@ Test cd
 cd with argument
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/cd/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/cd/in
 
 
 test cd PASSED
@@ -156,7 +156,7 @@ Test cd2
 cd without argument
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/cd2/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/cd2/in
 
 
 test cd2 PASSED
@@ -170,7 +170,7 @@ Test whitespace
 serveral commands with extra whitespace
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/whitespace/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/whitespace/in
 
 
 test whitespace PASSED
@@ -184,7 +184,7 @@ Test whitespace2
 builtin commands with extra whitespace
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/whitespace2/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/whitespace2/in
 
 
 test whitespace2 PASSED
@@ -198,13 +198,11 @@ Test args
 too many arguments to mysh
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/args/in /bogus
-Failure: ./mysh returned incorrect status code. Expected 1 got -11
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/args/in /bogus
 
 
-test args FAILED
+test args PASSED
  (too many arguments to mysh)
- ./mysh returned incorrect status code. Expected 1 got -11
 
 starting args2
 
@@ -214,13 +212,11 @@ Test args2
 invalid batch file path
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /bogus
-Failure: ./mysh returned incorrect status code. Expected 1 got 0
+/tmp/tmprrrPIb/p/./mysh /bogus
 
 
-test args2 FAILED
+test args2 PASSED
  (invalid batch file path)
- ./mysh returned incorrect status code. Expected 1 got 0
 
 starting longline
 
@@ -230,7 +226,7 @@ Test longline
 maximum length line
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/longline/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/longline/in
 Failure: ./mysh gave incorrect standard output.
 Expected: "echo 000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000512\n000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000512\nuname\nLinux\n"
 Got:      "echo 0000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000005100001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000051\n2\nuname\nLinux\n"
@@ -248,7 +244,7 @@ Test toolong
 a line that is too long
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/toolong/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/toolong/in
 Failure: ./mysh gave incorrect standard output.
 Expected: "echo 0000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000000513\nuname\nLinux\n"
 Got:      "echo 0000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000000500001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000011111111112222222222333333333344444444445555555555666666666677777777778888888888999999999900000000001111111111222222222233333333334444444444555555555566666666667777777777888888888899999999990000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999000000000005\n13\nuname\nLinux\n"
@@ -266,15 +262,11 @@ Test badprog
 bad executable path as command
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badprog/in
-Failure: ./mysh gave incorrect standard error.
-Expected: "An error has occurred\n"
-Got:      ""
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badprog/in
 
 
-test badprog FAILED
+test badprog PASSED
  (bad executable path as command)
- ./mysh gave incorrect standard error.
 
 starting errout
 
@@ -284,7 +276,7 @@ Test errout
 a called program produces error output, but no errors from the shell itself
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/errout/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/errout/in
 
 
 test errout PASSED
@@ -298,7 +290,7 @@ Test badcd
 invalid path to cd
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badcd/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badcd/in
 Failure: ./mysh gave incorrect standard error.
 Expected: "An error has occurred\n"
 Got:      "/bogus is not a valid path\n"
@@ -316,10 +308,10 @@ Test badpwd
 invalid arguments to pwd
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badpwd/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badpwd/in
 Failure: ./mysh gave incorrect standard output.
 Expected: "pwd /u\n"
-Got:      "pwd /u\n/tmp/tmp1iQsB7/p\n"
+Got:      "pwd /u\n/tmp/tmprrrPIb/p\n"
 
 
 test badpwd FAILED
@@ -334,7 +326,7 @@ Test badexit
 invalid arguments to exit
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badexit/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badexit/in
 Failure: ./mysh gave incorrect standard error.
 Expected: "An error has occurred\n"
 Got:      ""
@@ -352,7 +344,7 @@ Test redirect
 simple redirection using >
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/redirect/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/redirect/in
 
 
 test redirect PASSED
@@ -366,7 +358,7 @@ Test redirect2
 redirection and mutiple arguments
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/redirect2/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/redirect2/in
 
 
 test redirect2 PASSED
@@ -380,7 +372,7 @@ Test badredir
 redirect to invalid path
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badredir/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badredir/in
 Failure: ./mysh gave incorrect standard error.
 Expected: "An error has occurred\n"
 Got:      "open: Permission denied\n"
@@ -398,7 +390,7 @@ Test badredir2
 redirect to multiple paths
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badredir2/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badredir2/in
 
 
 test badredir2 PASSED
@@ -414,7 +406,7 @@ simple command in interactive mode
 **********************************************************************
 Running mysh with 1 command: see /u/c/s/cs537-2/ta/tests/2a/interactive/in
 
-/tmp/tmp1iQsB7/p/./mysh
+/tmp/tmprrrPIb/p/./mysh
 
 
 test interactive FAILED
@@ -431,7 +423,7 @@ series of commands in interactive mode
 **********************************************************************
 Running mysh with several commands: see /u/c/s/cs537-2/ta/tests/2a/interactive2/in
 
-/tmp/tmp1iQsB7/p/./mysh
+/tmp/tmprrrPIb/p/./mysh
 
 
 test interactive2 PASSED
@@ -445,7 +437,7 @@ Test background
 basic background process
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/background/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/background/in
 
 
 test background PASSED
@@ -459,7 +451,7 @@ Test background2
 background process followed by wait
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/background2/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/background2/in
 
 
 test background2 PASSED
@@ -473,7 +465,7 @@ Test background3
 command following wait
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/background3/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/background3/in
 
 
 test background3 PASSED
@@ -487,7 +479,7 @@ Test background4
 check that wait waits correctly
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/background4/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/background4/in
 Failure: ./mysh gave incorrect standard output.
 Expected: "python ./decho.py 2 delayed &\npython ./decho.py 4 delayedmore &\n/bin/echo now\nnow\nwait\ndelayed\ndelayedmore\n/bin/echo later\nlater\n"
 Got:      "python ./decho.py 2 delayed &\npython ./decho.py 4 delayedmore &\n/bin/echo now\nnow\nwait\ndelayed\n/bin/echo later\nlater\ndelayedmore\n"
@@ -505,7 +497,7 @@ Test waitnone
 wait with no background jobs
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/waitnone/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/waitnone/in
 
 
 test waitnone PASSED
@@ -519,7 +511,7 @@ Test badwait
 invalid arguments to wait
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badwait/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/badwait/in
 Failure: ./mysh gave incorrect standard error.
 Expected: "An error has occurred\n"
 Got:      ""
@@ -537,7 +529,7 @@ Test fun
 test the fun feature (python script)
 
 **********************************************************************
-/tmp/tmp1iQsB7/p/./mysh /u/c/s/cs537-2/ta/tests/2a/fun/in
+/tmp/tmprrrPIb/p/./mysh /u/c/s/cs537-2/ta/tests/2a/fun/in
 Failure: ./mysh gave incorrect standard output.
 Expected: "./echo-funtest.py test arg2 arg3\ntest arg2 arg3\n"
 Got:      "./echo-funtest.py test arg2 arg3\n"
@@ -589,13 +581,11 @@ test whitespace PASSED
 test whitespace2 PASSED
  (builtin commands with extra whitespace)
 
-test args FAILED
+test args PASSED
  (too many arguments to mysh)
- ./mysh returned incorrect status code. Expected 1 got -11
 
-test args2 FAILED
+test args2 PASSED
  (invalid batch file path)
- ./mysh returned incorrect status code. Expected 1 got 0
 
 test longline FAILED
  (maximum length line)
@@ -605,9 +595,8 @@ test toolong FAILED
  (a line that is too long)
  ./mysh gave incorrect standard output.
 
-test badprog FAILED
+test badprog PASSED
  (bad executable path as command)
- ./mysh gave incorrect standard error.
 
 test errout PASSED
  (a called program produces error output, but no errors from the shell itself)
@@ -668,5 +657,5 @@ test fun FAILED
  (test the fun feature (python script))
  ./mysh gave incorrect standard output.
 
-Passed 21 of 35 tests.
-Overall 21 of 35
+Passed 24 of 35 tests.
+Overall 24 of 35
