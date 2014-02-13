@@ -321,7 +321,8 @@ main(int argc, char *argv[])
         if(token[1] != NULL){ error(); exit(0); }
         // If we fork, then this 'wait' will not work as expected
         int stat;
-        (void) waitpid(-1, &stat, WUNTRACED);
+        (void) waitpid(-1, &stat, __WALL);
+        /* (void) waitpid(-1, &stat, WUNTRACED); */
       } else {
         // Run the user request
         execute(token);
