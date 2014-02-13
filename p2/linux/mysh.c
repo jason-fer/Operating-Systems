@@ -14,6 +14,7 @@
 #include <unistd.h>
 //#include <malloc.h>
 
+// Max line size is 512 bytes
 #define MAX_LINE_SIZE 512
 
 /**
@@ -219,10 +220,9 @@ execute(char** argv)
     }
 
     if (strcmp(argv[0], "pwd") == 0) {
+      if(argv[1] != NULL){ error(); exit(0); } // Prevent additional arguments
+
       char cwd[256];
-
-      // @todo: test badpwd FAILED (error on additional arguments)
-
       if (getcwd(cwd, sizeof(cwd)) == NULL) {
         error();
         exit(1);
