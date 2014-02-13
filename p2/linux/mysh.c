@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <errno.h>
 //#include <malloc.h>
 
 // Max line size is 512 bytes
@@ -320,8 +321,17 @@ main(int argc, char *argv[])
         // We only expect one argument
         if(token[1] != NULL){ error(); exit(0); }
         // If we fork, then this 'wait' will not work as expected
+
         int stat;
-        (void) waitpid(-1, &stat, __WALL);
+        int done = 0;
+        while (done != -1) {
+          done = waitpid(-1, &stat, __WALL);
+        }
+
+        if (done == -1) {
+          if (errno == ECHILD) continue; // no more child processes
+          else error();
+        }
         /* (void) waitpid(-1, &stat, WUNTRACED); */
       } else {
         // Run the user request
