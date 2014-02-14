@@ -132,15 +132,24 @@ doRedirection(char** token)
   if (searchingLastTok || penultimateTok) {
 
     int found = 0;
-    int i = 0;
-    while (token[i]) {
-      if (strchr(token[i],'>') || found) {
-        token[i] = NULL;
+    int j = 0;
+    while (token[j]) {
+      if (strchr(token[j],'>') || found) {
         found = 1;
+        if(strchr(token[j],'>')){
+          int position = (int) strcspn(token[j], ">");
+          if (position > 1) {
+            token[j][position] = '\0';
+          } else {
+            token[j] = NULL;
+          }
+        } else {
+          token[j] = NULL;
+        }
       }
-      ++i;
+      j++;
     }
-    
+
     return (strdup(filePos+1));
   } else {
     error();
@@ -202,7 +211,7 @@ execute(char** argv)
         error(); // Error closing file
         exit(1);
       }
-      
+
       // Open a new file
       int fd = open(fileName, O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
  
