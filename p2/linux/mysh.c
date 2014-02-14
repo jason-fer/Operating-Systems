@@ -220,6 +220,7 @@ execute(char** argv)
       }
     }
 
+
     if (strcmp(argv[0], "pwd") == 0) {
       if(argv[1] != NULL){ error(); exit(0); } // Prevent additional arguments
 
@@ -235,15 +236,29 @@ execute(char** argv)
       // Nothing to do (this directive is for the parent process)
       exit(0);
     } else {
-      /* For standard commands, which we represent exactly as the user 
-      specified, without modification. */
-      
-      char* execStr;
-      execStr = (char*)malloc(strlen(argv[0]) + /* strlen("/bin/") */ + 1);
-      /* strcat(execStr, "/bin/"); */
-      strcat(execStr, argv[0]);
-      argv[0] = execStr;
-      execvp(*argv, argv);
+
+      if (strcmp(&argv[0][strlen(argv[0])-3], ".py") == 0) {
+        // Our "fun" feature... pass arguments to the python interpreter
+        char* exec_args[20];
+        exec_args[0] = "/usr/bin/python";
+        int i;
+        for (i = 0; i < 19; ++i) {
+          exec_args[i + 1] = argv[i];  
+        }
+        exec_args[i + 1] = NULL;
+
+        execvp(*exec_args, exec_args);
+      } else {
+        /* For standard commands, which we represent exactly as the user 
+        specified, without modification. */
+        char* execStr;
+        execStr = (char*)malloc(strlen(argv[0]) /* + strlen("/bin/") */ + 1);
+        /* strcat(execStr, "/bin/"); */
+        strcat(execStr, argv[0]);
+        argv[0] = execStr;
+        execvp(*argv, argv);
+      }
+
       error(); // We got an unrecognized command in argv[0]
       exit(1);
     }
