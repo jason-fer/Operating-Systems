@@ -13,7 +13,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <errno.h>
-//#include <malloc.h>
 
 // Max line size is 512 bytes (plus terminator & null pointer)
 #define MAX_LINE_SIZE 512
@@ -123,7 +122,6 @@ doRedirection(char** token)
     return strdup("\0");
   }
 
-  /* if (strcmp(token[i-1][0], ">") != 0) { */
   char* searchingLastTok = strchr(token[i-1], '>');
   char* penultimateTok = NULL;
 
@@ -133,8 +131,6 @@ doRedirection(char** token)
 
   if (searchingLastTok || penultimateTok) {
 
-    /* write(STDOUT_FILENO,"Command: %s\n", token[0]); */
-    
     int found = 0;
     int i = 0;
     while (token[i]) {
@@ -145,7 +141,6 @@ doRedirection(char** token)
       ++i;
     }
     
-    /* write(STDOUT_FILENO,"File name: %s\n", filePos+1); */
     return (strdup(filePos+1));
   } else {
     error();
@@ -179,6 +174,7 @@ execute(char** argv)
   int rc = fork();
   
   if (rc > 0) { // This is the parent
+
     // The child process sould run in the background if an "&" ampersand is 
     // passed is as the final parameter.
     if (runChildProcInBg == 0){
@@ -193,16 +189,9 @@ execute(char** argv)
   } else if (rc == 0) { // This is the child
     
     char* fileName = doRedirection(argv);
-    /* int i = 0; */
-    /* while (argv[i]) { */
-    /*   write(STDOUT_FILENO,"%s ", argv[i]); */
-    /*   ++i; */
-    /* } */
-    /* printf ("\n"); */
-    /* printf ("This is the fileName after checking for argv %s\n", fileName); */
 
     if (strcmp(fileName, "\0") != 0) {
-      /* printf ("Closing stdout\n"); */
+
       int close_rc = close(STDOUT_FILENO);
       if (close_rc < 0) {
         error(); // Error closing file
@@ -211,15 +200,12 @@ execute(char** argv)
       
       // Open a new file
       int fd = open(fileName, O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
-      /* write(STDOUT_FILENO,"File descriptor number of new opened file = %d\n", fd); */
-      /* write(STDOUT_FILENO,"File descriptor number of stdout = %d\n\n", STDOUT_FILENO); */
  
       if (fd < 0) {
         error(); // Error opening file
         exit(1);
       }
     }
-
 
     if (strcmp(argv[0], "pwd") == 0) {
       if(argv[1] != NULL){ error(); exit(0); } // Prevent additional arguments
@@ -253,7 +239,6 @@ execute(char** argv)
         specified, without modification. */
         char* execStr;
         execStr = (char*)malloc(strlen(argv[0]) /* + strlen("/bin/") */ + 1);
-        /* strcat(execStr, "/bin/"); */
         strcat(execStr, argv[0]);
         argv[0] = execStr;
         execvp(*argv, argv);
@@ -263,11 +248,6 @@ execute(char** argv)
       exit(1);
     }
     
-    /*// Close the FD associated with stdout
-
-    execvp("ls", exec_args);
-    write(STDOUT_FILENO,"If you're reading this something went wrong!\n");*/
-
   } else if(rc < 0){ // Failed to fork
 
     fprintf(stderr, "fork() failed\n");
@@ -349,8 +329,8 @@ main(int argc, char *argv[])
       } else if(strcmp(token[0], "wait") == 0) {
         // We only expect one argument
         if(token[1] != NULL){ error(); exit(0); }
-        // If we fork, then this 'wait' will not work as expected
 
+        // If we fork, then this 'wait' will not work as expected
         int stat;
         int done = 0;
         while (done != -1) {
@@ -361,7 +341,7 @@ main(int argc, char *argv[])
           if (errno == ECHILD) continue; // no more child processes
           else error();
         }
-        /* (void) waitpid(-1, &stat, WUNTRACED); */
+
       } else {
         // Run the user request
         execute(token);
