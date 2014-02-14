@@ -137,13 +137,17 @@ doRedirection(char** token)
       if (strchr(token[j],'>') || found) {
         found = 1;
         if(strchr(token[j],'>')){
+          // Check for edge case where we don't want to delete the token.
           int position = (int) strcspn(token[j], ">");
           if (position > 1) {
+            // This token starts with an argument we need to keep.
             token[j][position] = '\0';
           } else {
+            // This token is safe to delete
             token[j] = NULL;
           }
         } else {
+          // This token is safe to delete
           token[j] = NULL;
         }
       }
