@@ -14,7 +14,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-// Max line size is 512 bytes (plus terminator & null pointer)
+// The maximum line size in bytes
 #define MAX_LINE_SIZE 512
 
 /**
@@ -89,7 +89,7 @@ runChildInBG(char** token)
 char*
 doRedirection(char** token)
 {
-  char line[512];
+  char line[MAX_LINE_SIZE];
   int i = 1;
   
   if (token[0] == NULL) {
@@ -189,6 +189,11 @@ execute(char** argv)
   } else if (rc == 0) { // This is the child
     
     char* fileName = doRedirection(argv);
+
+    // Remove ampersand if it exists
+    if (fileName[strlen(fileName) - 1] == '&') {
+      fileName[strlen(fileName) - 1] = '\0';
+    }
 
     if (strcmp(fileName, "\0") != 0) {
 
