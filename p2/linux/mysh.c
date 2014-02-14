@@ -325,7 +325,7 @@ main(int argc, char *argv[])
         int stat;
         int done = 0;
         while (done != -1) {
-          done = waitpid(-1, &stat, __WALL);
+          done = waitpid(-1, &stat, P_ALL);
         }
 
         if (done == -1) {
