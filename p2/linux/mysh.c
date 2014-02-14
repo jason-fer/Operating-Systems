@@ -267,7 +267,8 @@ execute(char** argv)
 int
 main(int argc, char *argv[]) 
 {
-  char line[MAX_LINE_SIZE + 2];
+  // A few bytes past the maximum length allow us to easily check for overflow
+  char line[MAX_LINE_SIZE + 4];
 
   char* fileName;
   FILE* fp = NULL;
@@ -287,36 +288,28 @@ main(int argc, char *argv[])
     fp = stdin;
   }
 
-  int had_overflow = 0;
   // Infinite read loop (until the user exits)
   while (1) {
     if (argc == 1) {
       prompt();
     }
 
-    if(fgets(line, MAX_LINE_SIZE + 1, fp)){
+    if (fgets(line, MAX_LINE_SIZE + 3, fp)) {
 
       size_t length = strlen(line) - 1;
 
       // Batch mode handling
       if (argc == 2) {
-        // Maximum length and no new line indicates overflow
-        int line_len = strlen(line);
-        if(line_len == MAX_LINE_SIZE && line[length] != '\n'){
-           had_overflow = 1;
-
-           char *tmpline = strdup(line);
-           tmpline[length + 1] = '\n';
-           tmpline[length + 2] = '\0';
-           write(STDOUT_FILENO, tmpline, line_len + 1);
+        // A greater than maximum length line
+        if (strlen(line) - 1  > MAX_LINE_SIZE) {
+          char *tmpline = strdup(line);
+          // Show the user a truncated version of the text
+          write(STDOUT_FILENO, tmpline, strlen(line));
+          error();
+          continue;
         } else {
-          // Skip this line if it was overflow & go to the next line.
-          if(had_overflow == 1){
-            // printf("SKIP!!\n");
-            had_overflow = 0; 
-            continue;
-          }  
-          write(STDOUT_FILENO, line, line_len);
+          // Default
+          write(STDOUT_FILENO, line, strlen(line));
         }
       }
 
