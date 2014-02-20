@@ -271,13 +271,13 @@ scheduler(void)
     for(p = ptable.proc, i =0; p < &ptable.proc[NPROC]; ++p, ++i){
 
       if(p->state != RUNNABLE) {
-        /* if (currProcessInfo.inuse[i] != 0) { */
-        /*   currProcessInfo.inuse[i]  = 0; */
-        /*   currProcessInfo.pid[i]    = -1; */
-        /*   currProcessInfo.hticks[i] = 0; */
-        /*   currProcessInfo.lticks[i] = 0; */
-        /*   currProcessInfo.onHQ[i] = -1; */
-        /* } */
+        if (currProcessInfo.inuse[i] != 0) {
+          /* currProcessInfo.inuse[i]  = 0; */
+          /* currProcessInfo.pid[i]    = -1; */
+          /* currProcessInfo.hticks[i] = 0; */
+          /* currProcessInfo.lticks[i] = 0; */
+          /* currProcessInfo.onHQ[i]   = -1; */
+        }
         continue;
       }
 
@@ -286,7 +286,7 @@ scheduler(void)
         currProcessInfo.pid[i]    = p->pid;
         currProcessInfo.hticks[i] = 0;
         currProcessInfo.lticks[i] = 0;
-        currProcessInfo.onHQ[i] = 1;
+        currProcessInfo.onHQ[i]   = 1;
       }
 
       // Switch to chosen process.  It is the process's job

@@ -42,22 +42,6 @@ fetchstr(struct proc *p, uint addr, char **pp)
   return -1;
 }
 
-int
-fetchpstat(struct proc *p, uint addr, struct pstat* pstatp)
-{
-  if(addr >= p->sz || addr+4 > p->sz)
-    return -1;
-
-  *pstatp = *(struct pstat*)(addr);
-  return 0;
-}
-
-int 
-argpstat(int n, struct pstat* pstatp)
-{
-  return fetchpstat(proc, proc->tf->esp + 4 + 4*n, pstatp);
-}
-
 // Fetch the nth 32-bit system call argument.
 int
 argint(int n, int *ip)

@@ -47,6 +47,7 @@ tools/mkfs.c
 user/cat.c
 user/echo.c
 user/forktest.c
+user/getpinfotest.c
 user/grep.c
 user/init.c
 user/kill.c

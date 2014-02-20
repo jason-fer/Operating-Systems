@@ -1,4 +1,4 @@
-cscope 15 /afs/cs.wisc.edu/u/r/j/rjain/private/sync-537/cs537/p2/xv6               0000616207
+cscope 15 /afs/cs.wisc.edu/u/r/j/rjain/private/sync-537/cs537/p2/xv6               0000616549
 	@include/fcntl.h
 
 1 #i‚de‡
@@ -14357,16 +14357,6 @@ p
 RUNNING
 ;
 
-298 
-	`˝rötf
-("Wû»°¨àru¬ögÖro˚s†%†wôhÖid = %d\n", 
-¥oc
-->
-«me
-,Öroc->
-pid
-);
-
 300 
 	`swtch
 (&
@@ -16105,71 +16095,7 @@ s
 	}
 }
 
-46 
-	$„tchp°©
-(
-¥oc
- *
-p
-, 
-uöt
- 
-addr
-, 
-p°©
-* 
-p°©p
-)
-
-48 if(
-addr
- >
-p
-->
-sz
- ||áddr+4 >Ö->sz)
-
-51 *
-p°©p
- = *(
-p°©
-*)(
-addr
-);
-
-53 
-	}
-}
-
-56 
-	$¨gp°©
-(
-n
-, 
-p°©
-* 
-p°©p
-)
-
-58  
-	`„tchp°©
-(
-¥oc
-,Öroc->
-tf
-->
-e•
- + 4 + 4*
-n
-, 
-p°©p
-);
-
-59 
-	}
-}
-
-63 
+62 
 	$¨göt
 (
 n
@@ -16177,7 +16103,7 @@ n
 ù
 )
 
-65  
+64  
 	`„tchöt
 (
 ¥oc
@@ -16191,11 +16117,11 @@ n
 ù
 );
 
-66 
+65 
 	}
 }
 
-72 
+71 
 	$¨g±r
 (
 n
@@ -16205,11 +16131,11 @@ n
 size
 )
 
-74 
+73 
 i
 ;
 
-76 if(
+75 if(
 	`¨göt
 (
 n
@@ -16217,7 +16143,7 @@ n
 i
 ) < 0)
 
-78 if((
+77 if((
 uöt
 )
 i
@@ -16229,17 +16155,17 @@ sz
 size
  >Öroc->sz)
 
-80 *
+79 *
 µ
  = (*)
 i
 ;
 
-82 
+81 
 	}
 }
 
-89 
+88 
 	$¨g°r
 (
 n
@@ -16247,11 +16173,11 @@ n
 µ
 )
 
-91 
+90 
 addr
 ;
 
-92 if(
+91 if(
 	`¨göt
 (
 n
@@ -16259,7 +16185,7 @@ n
 addr
 ) < 0)
 
-94  
+93  
 	`„tch°r
 (
 ¥oc
@@ -16269,159 +16195,159 @@ addr
 µ
 );
 
-95 
+94 
 	}
 }
 
-101 (*
+100 (*
 sysˇŒs
 [])() = {
 
-102 [
+101 [
 SYS_chdú
 ] 
 sys_chdú
 ,
 
-103 [
+102 [
 SYS_˛o£
 ] 
 sys_˛o£
 ,
 
-104 [
+103 [
 SYS_dup
 ] 
 sys_dup
 ,
 
-105 [
+104 [
 SYS_exec
 ] 
 sys_exec
 ,
 
-106 [
+105 [
 SYS_exô
 ] 
 sys_exô
 ,
 
-107 [
+106 [
 SYS_f‹k
 ] 
 sys_f‹k
 ,
 
-108 [
+107 [
 SYS_f°©
 ] 
 sys_f°©
 ,
 
-109 [
+108 [
 SYS_gëpid
 ] 
 sys_gëpid
 ,
 
-110 [
+109 [
 SYS_kûl
 ] 
 sys_kûl
 ,
 
-111 [
+110 [
 SYS_lök
 ] 
 sys_lök
 ,
 
-112 [
+111 [
 SYS_mkdú
 ] 
 sys_mkdú
 ,
 
-113 [
+112 [
 SYS_mknod
 ] 
 sys_mknod
 ,
 
-114 [
+113 [
 SYS_›í
 ] 
 sys_›í
 ,
 
-115 [
+114 [
 SYS_pùe
 ] 
 sys_pùe
 ,
 
-116 [
+115 [
 SYS_ªad
 ] 
 sys_ªad
 ,
 
-117 [
+116 [
 SYS_sbrk
 ] 
 sys_sbrk
 ,
 
-118 [
+117 [
 SYS_¶ìp
 ] 
 sys_¶ìp
 ,
 
-119 [
+118 [
 SYS_u∆ök
 ] 
 sys_u∆ök
 ,
 
-120 [
+119 [
 SYS_waô
 ] 
 sys_waô
 ,
 
-121 [
+120 [
 SYS_wrôe
 ] 
 sys_wrôe
 ,
 
-122 [
+121 [
 SYS_u±ime
 ] 
 sys_u±ime
 ,
 
-123 [
+122 [
 SYS_gëpöfo
 ] 
 sys_gëpöfo
 ,
 
-124 
+123 
 	}
 };
 
-129 
+128 
 	$sysˇŒ
 ()
 
-131 
+130 
 num
 ;
 
-133 
+132 
 num
  = 
 ¥oc
@@ -16431,7 +16357,7 @@ tf
 óx
 ;
 
-134 if(
+133 if(
 num
  > 0 &&Çum < 
 	`NELEM
@@ -16441,7 +16367,7 @@ sysˇŒs
 NULL
 ) {
 
-135 
+134 
 ¥oc
 ->
 tf
@@ -16453,11 +16379,11 @@ sysˇŒs
 num
 ]();
 
-137 
+136 
 	`˝rötf
 ("%d %s: unknown sys call %d\n",
 
-138 
+137 
 ¥oc
 ->
 pid
@@ -16467,7 +16393,7 @@ pid
 num
 );
 
-139 
+138 
 ¥oc
 ->
 tf
@@ -16475,7 +16401,7 @@ tf
 óx
  = -1;
 
-141 
+140 
 	}
 }
 
@@ -18339,31 +18265,39 @@ xticks
 	$sys_gëpöfo
 ()
 
-96 
-p°©
-* 
-°
+96 ** 
+∂a˚Hﬁdî
  = 
 NULL
 ;
 
 97 
-	`¨gp°©
+	`¨g±r
 (0, 
+∂a˚Hﬁdî
+, (
+p°©
+));
+
+99 
+p°©
+* 
 °
+ = (p°©*)(
+∂a˚Hﬁdî
 );
 
-98 i‡(
+100 i‡(
 °
 ) {
 
-99 
+101 
 °
  = &(
 cuºPro˚ssInfo
 );
 
-104 
+106 
 	}
 }
 
@@ -22570,6 +22504,120 @@ n
 ();
 
 56 
+	}
+}
+
+	@user/getpinfotest.c
+
+1 
+	~"ty≥s.h
+"
+
+2 
+	~"°©.h
+"
+
+3 
+	~"u£r.h
+"
+
+4 
+	~"p°©.h
+"
+
+6 
+	#check
+(
+exp
+, 
+msg
+) if(exp) {} {\
+
+7 
+	`¥ötf
+(1, "%s:%d check (" #ex∞"ËÁûed: %s\n", 
+__FILE__
+, 
+__LINE__
+, 
+msg
+); \
+
+8 
+	`exô
+();}
+
+	)
+
+11 
+	$maö
+(
+¨gc
+, *
+¨gv
+[])
+
+13 
+p°©
+ 
+°
+;
+
+15 
+	`check
+(
+	`gëpöfo
+(&
+°
+) == 0, "getpinfo");
+
+17 
+	`¥ötf
+(1, "Ju°ÖrötögÅhêvÆuêªtu∫ed from sysˇŒ\n", &
+°
+);
+
+18 
+i
+;
+
+19 
+i
+ = 0; i < 
+NPROC
+; i++) {
+
+20 i‡(
+°
+.
+öu£
+[
+i
+]) {
+
+21 
+	`¥ötf
+(1, "pid: %d hticks: %d\¿…icks: %d\n", 
+°
+.
+pid
+[
+i
+], st.
+hticks
+[i], st.
+…icks
+[i]);
+
+25 
+	`¥ötf
+(1, "TEST PASSED");
+
+26 
+	`exô
+();
+
+27 
 	}
 }
 
@@ -114670,8 +114718,8 @@ __END_DECLS
 .
 1
 /usr/include
-143
-2931
+144
+2951
 include/fcntl.h
 include/fs.h
 include/param.h
@@ -114721,6 +114769,7 @@ tools/mkfs.c
 user/cat.c
 user/echo.c
 user/forktest.c
+user/getpinfotest.c
 user/grep.c
 user/init.c
 user/kill.c
