@@ -271,12 +271,13 @@ scheduler(void)
     for(p = ptable.proc, i =0; p < &ptable.proc[NPROC]; ++p, ++i){
 
       if(p->state != RUNNABLE) {
-        if (currProcessInfo.inuse[i] != 0) {
-          currProcessInfo.inuse[i]  = 0;
-          currProcessInfo.pid[i]    = -1;
-          currProcessInfo.hticks[i] = 0;
-          currProcessInfo.lticks[i] = 0;
-        }
+        /* if (currProcessInfo.inuse[i] != 0) { */
+        /*   currProcessInfo.inuse[i]  = 0; */
+        /*   currProcessInfo.pid[i]    = -1; */
+        /*   currProcessInfo.hticks[i] = 0; */
+        /*   currProcessInfo.lticks[i] = 0; */
+        /*   currProcessInfo.onHQ[i] = -1; */
+        /* } */
         continue;
       }
 
@@ -285,6 +286,7 @@ scheduler(void)
         currProcessInfo.pid[i]    = p->pid;
         currProcessInfo.hticks[i] = 0;
         currProcessInfo.lticks[i] = 0;
+        currProcessInfo.onHQ[i] = 1;
       }
 
       // Switch to chosen process.  It is the process's job
@@ -293,7 +295,7 @@ scheduler(void)
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
-      cprintf("Will start running process %s with pid = %d\n", proc->name, proc->pid);
+      /* cprintf("Will start running process %s with pid = %d\n", proc->name, proc->pid); */
 
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
@@ -303,6 +305,7 @@ scheduler(void)
         --p;
         --i;
       } else {
+        currProcessInfo.onHQ[i] = 0;
         if (currProcessInfo.lticks[i] != 1) {
           ++currProcessInfo.lticks[i];
           --p;

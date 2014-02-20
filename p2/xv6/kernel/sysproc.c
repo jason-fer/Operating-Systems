@@ -5,6 +5,7 @@
 #include "mmu.h"
 #include "proc.h"
 #include "sysfunc.h"
+#include "pstat.h"
 
 int
 sys_fork(void)
@@ -88,3 +89,44 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_getpinfo(void)
+{
+  struct pstat* st = NULL;
+  argpstat(0, st);
+  if (st) {
+    st = &(currProcessInfo);
+    return 0;
+  }
+  
+  return -1;
+}
+
+/* int** */
+/* getprocinfo(struct pstat* procInfo) { */
+/*   int i = 0; */
+/*   int count = 0; */
+/*   int** info = NULL; */
+/*   // Structure is going to be (hticks + lticks), pid and onHQ */
+/*   for (; i < NPROC; ++i) { */
+/*     if (procInfo->inuse[i]) { */
+/*       count++; */
+/*     } */
+/*   } */
+  
+/*   if (count > 0) { */
+/*     info = (int**) malloc(count*sizeof(int*)); */
+/*     for (i = 0; i < count; ++i) { */
+/*       info[i] = (int*)malloc(3*sizeof(int)); */
+/*     } */
+
+/*     for (i = 0; i < NPROC; ++i) { */
+/*       if (procInfo->inuse[i]) { */
+/*         info[i] = {(procInfo->hticks[i] + procInfo->lticks[i]), */
+/*                    procInfo->pid[i], */
+/*                    procInfo->onHQ[i]}; */
+/*       } */
+/*     } */
+/*   } */
+/* } */

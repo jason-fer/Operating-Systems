@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "syscall.h"
 #include "sysfunc.h"
+#include "pstat.h"
 
 // User code makes a system call with INT T_SYSCALL.
 // System call number in %eax.
@@ -39,6 +40,22 @@ fetchstr(struct proc *p, uint addr, char **pp)
     if(*s == 0)
       return s - *pp;
   return -1;
+}
+
+int
+fetchpstat(struct proc *p, uint addr, struct pstat* pstatp)
+{
+  if(addr >= p->sz || addr+4 > p->sz)
+    return -1;
+
+  *pstatp = *(struct pstat*)(addr);
+  return 0;
+}
+
+int 
+argpstat(int n, struct pstat* pstatp)
+{
+  return fetchpstat(proc, proc->tf->esp + 4 + 4*n, pstatp);
 }
 
 // Fetch the nth 32-bit system call argument.
@@ -103,6 +120,7 @@ static int (*syscalls[])(void) = {
 [SYS_wait]    sys_wait,
 [SYS_write]   sys_write,
 [SYS_uptime]  sys_uptime,
+[SYS_getpinfo]   sys_getpinfo,
 };
 
 // Called on a syscall trap. Checks that the syscall number (passed via eax)
