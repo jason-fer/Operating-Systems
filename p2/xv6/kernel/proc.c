@@ -5,6 +5,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "pstat.h"
 
 struct {
   struct spinlock lock;
@@ -98,6 +99,7 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+  p->hticksLimit = 10;
   release(&ptable.lock);
 }
 
@@ -155,6 +157,7 @@ fork(void)
  
   pid = np->pid;
   np->state = RUNNABLE;
+  np->hticksLimit = 10;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
   return pid;
 }
@@ -229,6 +232,7 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
+        p->hticksLimit = 0;
         release(&ptable.lock);
         return pid;
       }
@@ -263,9 +267,25 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
+    int i;
+    for(p = ptable.proc, i =0; p < &ptable.proc[NPROC]; ++p, ++i){
+
+      if(p->state != RUNNABLE) {
+        if (currProcessInfo.inuse[i] != 0) {
+          currProcessInfo.inuse[i]  = 0;
+          currProcessInfo.pid[i]    = -1;
+          currProcessInfo.hticks[i] = 0;
+          currProcessInfo.lticks[i] = 0;
+        }
         continue;
+      }
+
+      if (currProcessInfo.inuse[i] == 0) {
+        currProcessInfo.inuse[i]  = 1;
+        currProcessInfo.pid[i]    = p->pid;
+        currProcessInfo.hticks[i] = 0;
+        currProcessInfo.lticks[i] = 0;
+      }
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -274,8 +294,23 @@ scheduler(void)
       switchuvm(p);
       p->state = RUNNING;
       cprintf("Will start running process %s with pid = %d\n", proc->name, proc->pid);
+
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
+
+      if (currProcessInfo.hticks[i] < (p->hticksLimit-1)) {
+        currProcessInfo.hticks[i]++;
+        --p;
+        --i;
+      } else {
+        if (currProcessInfo.lticks[i] != 1) {
+          ++currProcessInfo.lticks[i];
+          --p;
+          --i;
+        } else {
+          currProcessInfo.lticks[i] = 0;
+        }
+      }
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
@@ -443,5 +478,3 @@ procdump(void)
     cprintf("\n");
   }
 }
-
-
