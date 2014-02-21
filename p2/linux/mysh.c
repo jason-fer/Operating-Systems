@@ -299,6 +299,7 @@ main(int argc, char *argv[])
 
   // Infinite read loop (until the user exits)
   while (1) {
+
     if (argc == 1) {
       prompt();
     }
@@ -359,12 +360,11 @@ main(int argc, char *argv[])
         // Run the user request
         execute(token);
       }
+    } else if (argc == 2) {       // Batch file handling
+      fclose(fp);
+      exit(0);
     } else {
-      // Batch file handling
-      if (argc == 2) {
-        fclose(fp);
-        exit(0);
-      }
+      exit(0);
     }
   }
 
