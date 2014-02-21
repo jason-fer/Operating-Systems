@@ -209,7 +209,6 @@ execute(char** argv)
     }
 
     if (strcmp(fileName, "\0") != 0) {
-      printf("Opening fileName %s\n", fileName);
       int close_rc = close(STDOUT_FILENO);
       if (close_rc < 0) {
         error(); // Error closing file
