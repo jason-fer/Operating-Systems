@@ -13,6 +13,7 @@
 #****************************************************************************/
 CC     = gcc
 CFLAGS = -Wall -Werror
+DEBUGFLAGS = -g
 
 all: clean mysh
 
@@ -21,3 +22,6 @@ mysh:
 
 clean:
 	rm -rf mysh
+
+debug:
+	$(CC) -o mysh mysh.c $(CFLAGS) $(DEBUGFLAGS)

@@ -139,7 +139,7 @@ doRedirection(char** token)
         if(strchr(token[j],'>')){
           // Check for edge case where we don't want to delete the token.
           int position = (int) strcspn(token[j], ">");
-          if (position > 1) {
+          if (position >= 1) {
             // This token starts with an argument we need to keep.
             token[j][position] = '\0';
           } else {
@@ -202,14 +202,14 @@ execute(char** argv)
   } else if (rc == 0) { // This is the child
     
     char* fileName = doRedirection(argv);
-
+    
     // Remove ampersand if it exists
     if (fileName[strlen(fileName) - 1] == '&') {
       fileName[strlen(fileName) - 1] = '\0';
     }
 
     if (strcmp(fileName, "\0") != 0) {
-
+      printf("Opening fileName %s\n", fileName);
       int close_rc = close(STDOUT_FILENO);
       if (close_rc < 0) {
         error(); // Error closing file
@@ -255,10 +255,6 @@ execute(char** argv)
       } else {
         /* For standard commands, which we represent exactly as the user 
         specified, without modification. */
-        char* execStr;
-        execStr = (char*)malloc(strlen(argv[0]) /* + strlen("/bin/") */ + 1);
-        strcat(execStr, argv[0]);
-        argv[0] = execStr;
         execvp(*argv, argv);
       }
 
@@ -337,8 +333,7 @@ main(int argc, char *argv[])
 
       // Prevent the program from crashing if the user only enters whitespace
       if(token[0] == NULL) continue;
-
-
+      
       if (strcmp(token[0], "exit") == 0) {
         // We only expect one argument
         if(token[1] != NULL){ error(); exit(0); }
