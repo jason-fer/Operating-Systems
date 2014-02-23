@@ -17,7 +17,7 @@ struct pstat {
   int lticks[NPROC];
   
   // MLFQ priority: 0 = HIGH, 1 = LOW (based on proc.h mlfq enum)
-  int priority_level[NPROC];
+  int mlfq[NPROC];
 };
 
 struct pstat currProcessInfo;

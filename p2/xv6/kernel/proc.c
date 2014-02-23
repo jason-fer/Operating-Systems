@@ -277,7 +277,7 @@ scheduler(void)
           /* currProcessInfo.pid[i]    = -1; */
           /* currProcessInfo.hticks[i] = 0; */
           /* currProcessInfo.lticks[i] = 0; */
-          /* currProcessInfo.priority_level[i]   = -1; */
+          /* currProcessInfo.mlfq[i]   = -1; */
         }
         continue;
       }
@@ -287,7 +287,7 @@ scheduler(void)
         currProcessInfo.pid[i]    = p->pid;
         currProcessInfo.hticks[i] = 0;
         currProcessInfo.lticks[i] = 0;
-        currProcessInfo.priority_level[i] = p->priority_level;
+        currProcessInfo.mlfq[i] = p->mlfq;
       }
 
       // Switch to chosen process.  It is the process's job to release 
@@ -304,7 +304,7 @@ scheduler(void)
         --p;
         --i;
       } else {
-        currProcessInfo.priority_level[i] = 0;
+        currProcessInfo.mlfq[i] = 0;
         if (currProcessInfo.lticks[i] != 1) {
           ++currProcessInfo.lticks[i];
           --p;

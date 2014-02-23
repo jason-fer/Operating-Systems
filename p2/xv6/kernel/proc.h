@@ -58,8 +58,8 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
-// Multi Level Feedback Queue
-enum mlfq { HIGH, LOW }; // Default HIGH
+// Multi Level Feedback Queue (MLFQ)
+enum mlfq_lvls { HIGH, LOW }; // Default HIGH
 
 // Per-process state
 struct proc {
@@ -77,7 +77,7 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   unsigned hticksLimit;        // ticks limit process spends on high priority Q
-  enum mlfq priority_level;    // Multi-Level Feedback queue (HIGH or LOW)
+  enum mlfq_lvls mlfq;         // Multi-Level Feedback queue (0 = HIGH, 1 = LOW)
   int tickets;                 // The number of lottery tickets this process currently has.
 };
 
