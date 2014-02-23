@@ -16,8 +16,8 @@ struct pstat {
   // the number of ticks each process has accumulated at LOW priority
   int lticks[NPROC];
   
-  // tests whether it is on HIGH priority or not
-  int onHQ[NPROC];
+  // MLFQ priority: 0 = HIGH, 1 = LOW (based on proc.h mlfq enum)
+  int priority_level[NPROC];
 };
 
 struct pstat currProcessInfo;

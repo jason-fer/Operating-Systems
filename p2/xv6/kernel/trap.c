@@ -101,6 +101,9 @@ trap(struct trapframe *tf)
   // If interrupts were on while locks held, would need to check nlock.
   if(proc && proc->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER) {
     /* cprintf("About to yield %s with pid %d\n", proc->name, proc->pid); */
+
+    // low priority proc 2x time slice
+    // high priority proce: 1x time slice
     yield();
   }
 

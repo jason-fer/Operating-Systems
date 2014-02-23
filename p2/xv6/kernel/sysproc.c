@@ -104,3 +104,24 @@ sys_getpinfo(void)
   
   return -1;
 }
+
+/**
+ * Sets the number of tickets of the calling process. By default each process
+ * gets one ticket. By repeatedly calling this routine, a process can raise the
+ * number of tickets it has to get a high proportion of CPU cycles.
+ *
+ * @return 0 on success, -1 on failure
+ */
+int
+sys_settickets(void)
+{
+  int num;
+
+  // Less than one ticket isn't possible.
+  if(argint(0, &num) < 1) return -1;
+  
+  proc->tickets = num;
+
+  return 0;
+
+}

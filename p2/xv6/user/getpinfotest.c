@@ -26,6 +26,6 @@ main(int argc, char *argv[])
    
    check(count == 3, "should be three processes: init, sh, tester");
    
-   printf(1, "TEST PASSED");
+   printf(1, "TEST PASSED\n");
    exit();
 }

@@ -267,6 +267,7 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+
     int i;
     for(p = ptable.proc, i =0; p < &ptable.proc[NPROC]; ++p, ++i){
 
@@ -276,7 +277,7 @@ scheduler(void)
           /* currProcessInfo.pid[i]    = -1; */
           /* currProcessInfo.hticks[i] = 0; */
           /* currProcessInfo.lticks[i] = 0; */
-          /* currProcessInfo.onHQ[i]   = -1; */
+          /* currProcessInfo.priority_level[i]   = -1; */
         }
         continue;
       }
@@ -286,16 +287,14 @@ scheduler(void)
         currProcessInfo.pid[i]    = p->pid;
         currProcessInfo.hticks[i] = 0;
         currProcessInfo.lticks[i] = 0;
-        currProcessInfo.onHQ[i]   = 1;
+        currProcessInfo.priority_level[i] = p->priority_level;
       }
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
+      // Switch to chosen process.  It is the process's job to release 
+      // ptable.lock and then reacquire it before jumping back to us.
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
-      /* cprintf("Will start running process %s with pid = %d\n", proc->name, proc->pid); */
 
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
@@ -305,7 +304,7 @@ scheduler(void)
         --p;
         --i;
       } else {
-        currProcessInfo.onHQ[i] = 0;
+        currProcessInfo.priority_level[i] = 0;
         if (currProcessInfo.lticks[i] != 1) {
           ++currProcessInfo.lticks[i];
           --p;
@@ -350,6 +349,8 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   proc->state = RUNNABLE;
+  // Reset tickets back to 1
+  // Set time slices back to zero
   sched();
   release(&ptable.lock);
 }

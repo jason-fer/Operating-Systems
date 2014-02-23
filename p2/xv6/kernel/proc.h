@@ -58,6 +58,8 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+// Multi Level Feedback Queue
+enum mlfq { HIGH, LOW }; // Default HIGH
 
 // Per-process state
 struct proc {
@@ -75,6 +77,8 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   unsigned hticksLimit;        // ticks limit process spends on high priority Q
+  enum mlfq priority_level;    // Multi-Level Feedback queue (HIGH or LOW)
+  int tickets;                 // The number of lottery tickets this process currently has.
 };
 
 // Process memory is laid out contiguously, low addresses first:
