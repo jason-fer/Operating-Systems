@@ -118,14 +118,14 @@ sys_settickets(void)
   int num;
 
   // Less than one ticket isn't possible.
-  if(argint(0, &num) < 1) return -1;
+  argint(0, &num);
+  if(num < 1) return -1;
   
   // Give them as many tickets as they want! I don't see how this makes sense, 
   // but this seems to be the spec.
   proc->tickets = num;
 
   return 0;
-
 }
 
 /**
