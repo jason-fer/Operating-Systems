@@ -28,6 +28,7 @@ int sleep(int);
 int uptime(void);
 int getpinfo(struct pstat*);
 int settickets(int);
+int lottery(void);
 
 // user library functions (ulib.c)
 int stat(char*, struct stat*);

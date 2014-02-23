@@ -12,5 +12,5 @@
 int
 main(int argc, char *argv[])
 {
-  // @todo: add settickets test
+  // @todo: add settickets test & test lottery as well... 
 }

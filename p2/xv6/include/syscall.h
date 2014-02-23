@@ -25,5 +25,6 @@
 #define SYS_uptime 21
 #define SYS_getpinfo  22
 #define SYS_settickets 23
+#define SYS_lottery 24
 
 #endif // _SYSCALL_H_

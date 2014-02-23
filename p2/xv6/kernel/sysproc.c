@@ -120,8 +120,28 @@ sys_settickets(void)
   // Less than one ticket isn't possible.
   if(argint(0, &num) < 1) return -1;
   
+  // Give them as many tickets as they want! I don't see how this makes sense, 
+  // but this seems to be the spec.
   proc->tickets = num;
 
   return 0;
 
+}
+
+/**
+ * Xorshift algorithm random number generator. This is the JavaScript core of 
+ * the same random number generator used in Webkit (chrome / safari) browsers.
+ */
+int
+sys_lottery(void) 
+{
+  static int x = 373932311;
+  static int y = 98716523;
+  static int z = 123498473;
+  static int w = 384837112;
+  int t;
+ 
+  t = x ^ (x << 11);
+  x = y; y = z; z = w;
+  return w = w ^ (w >> 19) ^ (t ^ (t >> 8));
 }
