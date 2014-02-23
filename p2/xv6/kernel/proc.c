@@ -99,7 +99,7 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
-  p->hticksLimit = 10;
+  p->tickets = 1;
   release(&ptable.lock);
 }
 
@@ -157,7 +157,7 @@ fork(void)
  
   pid = np->pid;
   np->state = RUNNABLE;
-  np->hticksLimit = 10;
+  np->tickets = 1;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
   return pid;
 }
@@ -232,7 +232,7 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-        p->hticksLimit = 0;
+        p->tickets = 0;
         release(&ptable.lock);
         return pid;
       }
@@ -299,7 +299,7 @@ scheduler(void)
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
-      if (currProcessInfo.hticks[i] < (p->hticksLimit-1)) {
+      if (currProcessInfo.hticks[i] < (p->tickets)) {
         currProcessInfo.hticks[i]++;
         --p;
         --i;

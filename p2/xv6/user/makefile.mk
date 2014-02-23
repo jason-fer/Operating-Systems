@@ -11,6 +11,7 @@ USER_PROGS := \
 	ls\
 	mkdir\
 	getpinfotest\
+	setticketstest\
 	rm\
 	sh\
 	stressfs\

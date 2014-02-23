@@ -76,7 +76,6 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  unsigned hticksLimit;        // ticks limit process spends on high priority Q
   enum mlfq priority_level;    // Multi-Level Feedback queue (HIGH or LOW)
   int tickets;                 // The number of lottery tickets this process currently has.
 };
