@@ -64,11 +64,22 @@ main(int argc, char *argv[])
        }
      }
 
+     int total_tickets = 0;
+     int total_cpu_time = 0;
      for(i = 0; i < NPROC; ++i) {
        if (st.inuse[i]) {
-         printf(1, "Time = %d, st.pid[%d] = %d st.hticks[%d] = %d, st.lticks[%d] = %d, st.tickets[%d] = %d st.LOW = %d\n", 
-                count, i, st.pid[i], i, st.hticks[i], i, 
-                st.lticks[i], i, st.tickets[i], st.mlfq );
+         // total tickets
+         total_tickets += st.tickets[i];
+
+         // total cpu time
+         total_cpu_time += st.hticks[i] + st.lticks[i];
+       }
+     }
+
+     for(i = 0; i < NPROC; ++i) {
+       if (st.inuse[i]) {
+         printf(1, "Time: %d, pid: %d, cpu-time: %d total-cpu:%d tickets: %d total-tickets: %d queue: %s \n" , 
+            count, st.pid[i], st.hticks[i]+st.lticks[i], total_cpu_time, st.tickets[i], total_tickets, st.mlfq[i]?"low":"high" );
        }
      }
    }
