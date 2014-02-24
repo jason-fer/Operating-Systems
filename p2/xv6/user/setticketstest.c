@@ -46,6 +46,10 @@ main(int argc, char *argv[])
    }
 
    int count = 0;
+
+   // Header row:
+   printf(1, "Time:, Pid:, cpu-time:, total-cpu:, tickets:, total-tickets:, queue:, \n");
+
    for (; count < 50; ++count) {
    
      sleep(1);
@@ -78,7 +82,10 @@ main(int argc, char *argv[])
 
      for(i = 0; i < NPROC; ++i) {
        if (st.inuse[i]) {
-         printf(1, "Time: %d, pid: %d, cpu-time: %d total-cpu:%d tickets: %d total-tickets: %d queue: %s \n" , 
+         // printf(1, "Time: %d, pid: %d, cpu-time: %d total-cpu:%d tickets: %d total-tickets: %d queue: %s \n" , 
+         //    count, st.pid[i], st.hticks[i]+st.lticks[i], total_cpu_time, st.tickets[i], total_tickets, st.mlfq[i]?"low":"high" );
+
+         printf(1, "%d, %d, %d, %d, %d, %d, %s \n" , 
             count, st.pid[i], st.hticks[i]+st.lticks[i], total_cpu_time, st.tickets[i], total_tickets, st.mlfq[i]?"low":"high" );
        }
      }
