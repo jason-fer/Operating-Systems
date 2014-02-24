@@ -558,5 +558,5 @@ lottery(int range)
   t = x ^ (x << 11);
   x = y; y = z; z = w;
   w = (w ^ (w >> 19) ^ (t ^ (t >> 8)));
-  return (w%(range));
+  return (w%(range) + 1);
 }
