@@ -15,3 +15,9 @@ Emulate a unix shell with fork(), exec(), and wait().
 Project 2b: xv6 Scheduler
 Refactor the scheduler to use a multi-level feedback queue with lottery ticket 
 based process selection.
+
+2b Graph:
+We can see that as time progresses, the CPU allotment (in terms of time slices)
+approaches the ticket share. We expect this result because in statistics, the
+law of large numbers tells us that as the number of experiments grows
+infinitely large, the results will get closer & closer to the expected values.
