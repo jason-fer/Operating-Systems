@@ -99,7 +99,6 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
-  p->tickets = 1;
   release(&ptable.lock);
 }
 
@@ -157,7 +156,10 @@ fork(void)
  
   pid = np->pid;
   np->state = RUNNABLE;
-  np->tickets = 1;
+
+  // Set the default number of tickets: 1
+  // settickets(1);
+
   safestrcpy(np->name, proc->name, sizeof(proc->name));
   return pid;
 }
@@ -232,7 +234,6 @@ wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-        p->tickets = 0;
         release(&ptable.lock);
         return pid;
       }
@@ -277,7 +278,7 @@ scheduler(void)
           /* currProcessInfo.pid[i]    = -1; */
           /* currProcessInfo.hticks[i] = 0; */
           /* currProcessInfo.lticks[i] = 0; */
-          /* currProcessInfo.mlfq[i]   = -1; */
+          /* currProcessInfo.mlfq[i]   = 0; */
         }
         continue;
       }
@@ -287,7 +288,9 @@ scheduler(void)
         currProcessInfo.pid[i]    = p->pid;
         currProcessInfo.hticks[i] = 0;
         currProcessInfo.lticks[i] = 0;
-        currProcessInfo.mlfq[i] = p->mlfq;
+        currProcessInfo.mlfq[i] = p->mlfq; // Default to high priority: 0
+        // Where is the process array posiiion? (within NPROC)
+        p->parrpos = i;
       }
 
       // Switch to chosen process.  It is the process's job to release 
@@ -299,19 +302,17 @@ scheduler(void)
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
-      if (currProcessInfo.hticks[i] < (p->tickets)) {
+      // Processes run at low priority after running at high priority once
+      if (currProcessInfo.mlfq[i] == 0) {
         currProcessInfo.hticks[i]++;
+        p->mlfq = 1; // Low priority
+        currProcessInfo.mlfq[i] = 1; // Low priority
         --p;
         --i;
       } else {
-        currProcessInfo.mlfq[i] = 0;
-        if (currProcessInfo.lticks[i] != 1) {
-          ++currProcessInfo.lticks[i];
-          --p;
-          --i;
-        } else {
-          currProcessInfo.lticks[i] = 0;
-        }
+        ++currProcessInfo.lticks[i];
+        --p;
+        --i;
       }
 
       // Process is done running for now.

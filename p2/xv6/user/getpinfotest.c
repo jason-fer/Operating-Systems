@@ -19,7 +19,7 @@ main(int argc, char *argv[])
    for(i = 0; i < NPROC; i++) {
       if (st.inuse[i]) {
          count++;
-         printf(1, "pid: %d hticks: %d lticks:%d\n", st.pid[i], st.hticks[i], st.lticks[i]);
+         printf(1, "pid: %d hticks: %d lticks:%d, tickets: %d\n", st.pid[i], st.hticks[i], st.lticks[i], st.tickets[i]);
          check(st.hticks[i] > 0, "all processes must have run at least once");
       }
    }

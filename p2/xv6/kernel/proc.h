@@ -58,8 +58,7 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
-// Multi Level Feedback Queue (MLFQ)
-enum mlfq_lvls { HIGH, LOW }; // Default HIGH
+enum mlfq_level { HIGH, LOW };
 
 // Per-process state
 struct proc {
@@ -67,6 +66,7 @@ struct proc {
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
+  enum mlfq_level mlfq;        // Process state
   volatile int pid;            // Process ID
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
@@ -76,9 +76,9 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  unsigned hticksLimit;        // ticks limit process spends on high priority Q
-  enum mlfq_lvls mlfq;         // Multi-Level Feedback queue (0 = HIGH, 1 = LOW)
-  int tickets;                 // The number of lottery tickets this process currently has.
+  unsigned hticksLimit;        // Ticks limit process spends on high priority Q
+  uint parrpos;                // Process array position (within NPROC)
+  uint tickets;                // Number of tickets this process currently holds
 };
 
 // Process memory is laid out contiguously, low addresses first:

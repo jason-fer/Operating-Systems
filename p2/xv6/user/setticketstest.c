@@ -63,8 +63,8 @@ main(int argc, char *argv[])
 
    for(i = 0; i < NPROC; ++i) {
      if (st.inuse[i]) {
-       printf(1, "st.pid[i] = %d st.hticks[i] = %d, st.lticks[i] = %d\n", 
-              st.pid[i], st.hticks[i], st.lticks[i] );
+       printf(1, "st.pid[i] = %d st.hticks[i] = %d, st.lticks[i] = %d, st.tickets[i] = %d \n", 
+              st.pid[i], st.hticks[i], st.lticks[i], st.tickets[i] );
      }
    }
    for (i = 0; i < 2; i++) {

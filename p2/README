@@ -13,3 +13,5 @@ Emulate a unix shell with fork(), exec(), and wait().
 
 
 Project 2b: xv6 Scheduler
+Refactor the scheduler to use a multi-level feedback queue with lottery / ticket 
+based selection.

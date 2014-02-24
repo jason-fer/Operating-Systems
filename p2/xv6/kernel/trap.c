@@ -102,8 +102,14 @@ trap(struct trapframe *tf)
   if(proc && proc->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER) {
     /* cprintf("About to yield %s with pid %d\n", proc->name, proc->pid); */
 
-    // low priority proc 2x time slice
-    // high priority proce: 1x time slice
+    // if(p->mlfq == 0){
+    //   // high priority proc: 1x time slice
+      
+    // } else {
+    //   // low priority proc 2x time slice
+
+    // }
+
     yield();
   }
 

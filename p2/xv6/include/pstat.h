@@ -18,6 +18,9 @@ struct pstat {
   
   // MLFQ priority: 0 = HIGH, 1 = LOW (based on proc.h mlfq enum)
   int mlfq[NPROC];
+
+  // The number of lottery tickets each process currently has.
+  int tickets[NPROC];
 };
 
 struct pstat currProcessInfo;

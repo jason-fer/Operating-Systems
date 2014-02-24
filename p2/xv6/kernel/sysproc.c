@@ -116,7 +116,6 @@ int
 sys_settickets(void)
 {
   int num;
-
   // Less than one ticket isn't possible.
   argint(0, &num);
   if(num < 1) return -1;
@@ -124,6 +123,7 @@ sys_settickets(void)
   // Give them as many tickets as they want! I don't see how this makes sense, 
   // but this seems to be the spec.
   proc->tickets = num;
+  currProcessInfo.tickets[proc->parrpos] = num;
 
   return 0;
 }
