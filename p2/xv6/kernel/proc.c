@@ -268,18 +268,18 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-
+    
     int i;
+    int lowP  = 0;
+    int highP = 0;
+
     for(p = ptable.proc, i =0; p < &ptable.proc[NPROC]; ++p, ++i){
 
+      if (currProcessInfo.inuse[i] == 0) {
+        currProcessInfo.tickets[i] = p->tickets;
+      }
+
       if(p->state != RUNNABLE) {
-        if (currProcessInfo.inuse[i] != 0) {
-          /* currProcessInfo.inuse[i]  = 0; */
-          /* currProcessInfo.pid[i]    = -1; */
-          /* currProcessInfo.hticks[i] = 0; */
-          /* currProcessInfo.lticks[i] = 0; */
-          /* currProcessInfo.mlfq[i]   = 0; */
-        }
         continue;
       }
 
@@ -288,9 +288,64 @@ scheduler(void)
         currProcessInfo.pid[i]    = p->pid;
         currProcessInfo.hticks[i] = 0;
         currProcessInfo.lticks[i] = 0;
-        currProcessInfo.mlfq[i] = p->mlfq; // Default to high priority: 0
+        currProcessInfo.mlfq[i] = HIGH;
+        p->mlfq = HIGH; // Default to high priority: 0
         // Where is the process array posiiion? (within NPROC)
         p->parrpos = i;
+        if (p->tickets <= 0) {
+          p->tickets = 1;
+        }
+        currProcessInfo.tickets[i] = p->tickets;
+      }
+      
+      if (currProcessInfo.inuse[i] != 0) {
+        if (currProcessInfo.mlfq[i] == HIGH) {
+          ++highP;
+        }
+        lowP += p->tickets;
+        currProcessInfo.tickets[i] = p->tickets;
+      }
+    }
+    
+    int numProcWeights = lowP;
+    int randomI        = lottery(numProcWeights);
+    int pidProc        = 0;
+    int sum            = 0;
+
+    for(p = ptable.proc, i =0; p < &ptable.proc[NPROC]; ++p, ++i){
+
+      if(p->state != RUNNABLE) {
+        continue;
+      }
+     
+      if (highP == 0) {
+        if ((sum + p->tickets) >= randomI) {
+          pidProc = p->pid;
+          break;
+        }
+      }
+      
+      sum += p->tickets;
+    }
+
+    int firstTime = 1;
+    for(p = ptable.proc, i =0; p < &ptable.proc[NPROC]; ++i) { // notice the missing ++p
+      
+      if (p->state != RUNNABLE) {
+        ++p;
+        continue;
+      }
+
+      if (highP == 0) {
+        if(p->pid != pidProc) {
+          ++p;
+          continue;
+        }
+
+        if (pidProc < 1) {
+          ++p;
+          continue;
+        }
       }
 
       // Switch to chosen process.  It is the process's job to release 
@@ -302,17 +357,20 @@ scheduler(void)
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
+      
       // Processes run at low priority after running at high priority once
-      if (currProcessInfo.mlfq[i] == 0) {
+      if (currProcessInfo.mlfq[i] == HIGH) {
         currProcessInfo.hticks[i]++;
-        p->mlfq = 1; // Low priority
-        currProcessInfo.mlfq[i] = 1; // Low priority
-        --p;
+        p->mlfq = LOW; // Low priority
+        currProcessInfo.mlfq[i] = LOW; // Low priority
+        ++p;
+      } else if (firstTime == 1) { // the missing ++p helps us to run second time
+        ++currProcessInfo.lticks[i];
         --i;
+        firstTime = 0;
       } else {
         ++currProcessInfo.lticks[i];
-        --p;
-        --i;
+        ++p;
       }
 
       // Process is done running for now.
@@ -482,4 +540,23 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int
+lottery(int range) 
+{
+  if (range <= 0) {
+    return 0;
+  }
+   
+  static int x = 123456789;
+  static int y = 362436069;
+  static int z = 521288629;
+  static int w = 88675123;
+  int t;
+  
+  t = x ^ (x << 11);
+  x = y; y = z; z = w;
+  w = (w ^ (w >> 19) ^ (t ^ (t >> 8)));
+  return (w%(range));
 }
