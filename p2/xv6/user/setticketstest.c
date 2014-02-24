@@ -45,42 +45,48 @@ main(int argc, char *argv[])
       spin();
    }
 
-   sleep(1000);
+   int count = 0;
+   for (; count < 50; ++count) {
+   
+     sleep(1);
 
-   int lticks[] = {-1, -1};
-   int hticks[] = {-1, -1};
-   struct pstat st;
-   check(getpinfo(&st) == 0, "getpinfo");
+     int lticks[] = {-1, -1};
+     int hticks[] = {-1, -1};
+     struct pstat st;
+     check(getpinfo(&st) == 0, "getpinfo");
 
-   for(i = 0; i < NPROC; i++) {
-      for(j = 0; j < 2; j++) {
+     for(i = 0; i < NPROC; i++) {
+       for(j = 0; j < 2; j++) {
          if (st.inuse[i] && st.pid[i] == pids[j]) {
-            lticks[j] = st.lticks[i];
-            hticks[j] = st.hticks[i];
+           lticks[j] = st.lticks[i];
+           hticks[j] = st.hticks[i];
          }
-      }
-   }
+       }
+     }
 
-   for(i = 0; i < NPROC; ++i) {
-     if (st.inuse[i]) {
-       printf(1, "st.pid[i] = %d st.hticks[i] = %d, st.lticks[i] = %d, st.tickets[i] = %d \n", 
-              st.pid[i], st.hticks[i], st.lticks[i], st.tickets[i] );
+     for(i = 0; i < NPROC; ++i) {
+       if (st.inuse[i]) {
+         printf(1, "Time = %d, st.pid[%d] = %d st.hticks[%d] = %d, st.lticks[%d] = %d, st.tickets[%d] = %d st.LOW = %d\n", 
+                count, i, st.pid[i], i, st.hticks[i], i, 
+                st.lticks[i], i, st.tickets[i], st.mlfq );
+       }
      }
    }
-   for (i = 0; i < 2; i++) {
-      kill(pids[i]);
-      wait();
-   }
 
-   for (i = 0; i < 2; i++) {
-      check(hticks[i] > 0 && lticks[i] > 0, "each process should have some hticks and lticks");
-   }
+   /* for (i = 0; i < 2; i++) { */
+   /*    kill(pids[i]); */
+   /*    wait(); */
+   /* } */
 
-   float ratio = (float)lticks[0] / (float)lticks[1];
-   printf(1, "lticks child 1: %d\n", lticks[0]);
-   printf(1, "lticks child 2: %d\n", lticks[1]);
-   check(ratio > .25 && ratio < .75, "ratio should be about 1/2");
+   /* for (i = 0; i < 2; i++) { */
+   /*    check(hticks[i] > 0 && lticks[i] > 0, "each process should have some hticks and lticks"); */
+   /* } */
 
-   printf(1, "TEST PASSED\n");
+   /* float ratio = (float)lticks[0] / (float)lticks[1]; */
+   /* printf(1, "lticks child 1: %d\n", lticks[0]); */
+   /* printf(1, "lticks child 2: %d\n", lticks[1]); */
+   /* check(ratio > .25 && ratio < .75, "ratio should be about 1/2"); */
+
+   /* printf(1, "TEST PASSED\n"); */
    exit();
 }
