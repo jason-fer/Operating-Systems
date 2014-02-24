@@ -45,12 +45,12 @@ main(int argc, char *argv[])
       spin();
    }
 
-   int count = 1;
+   int count = 0;
 
    // Header row:
    printf(1, "Time,Pid,cpu-time,total-cpu,tickets,total-tickets,queue\n");
 
-   for (; count < 10000; count = count * 10) {
+   for (; count < 100; count = count + 5) {
    
      sleep(count);
 
