@@ -67,3 +67,5 @@ runtests.log
 /p2/xv6/kernel/bootmain.d
 /p2/xv6/kernel/bootasm.d
 /p2/xv6/kernel/bio.d
+
+/p2/.~lock.Datapoints.xlsx\#
