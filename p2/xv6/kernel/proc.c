@@ -290,7 +290,7 @@ scheduler(void)
         currProcessInfo.lticks[i] = 0;
         currProcessInfo.mlfq[i] = HIGH;
         p->mlfq = HIGH; // Default to high priority: 0
-        // Where is the process array posiiion? (within NPROC)
+        // Keep track of the process array position (within NPROC)
         p->parrpos = i;
         if (p->tickets <= 0) {
           p->tickets = 1;
@@ -558,5 +558,5 @@ lottery(int range)
   t = x ^ (x << 11);
   x = y; y = z; z = w;
   w = (w ^ (w >> 19) ^ (t ^ (t >> 8)));
-  return (w%(range) + 1);
+  return (w% (range) + 1);
 }

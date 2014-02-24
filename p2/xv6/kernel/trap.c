@@ -9,7 +9,7 @@
 
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
-extern uint vectors[];  // in vectors.S: array of 256 entry pointers
+extern uint vectors[];  // In vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
 
@@ -100,16 +100,6 @@ trap(struct trapframe *tf)
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
   if(proc && proc->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER) {
-    /* cprintf("About to yield %s with pid %d\n", proc->name, proc->pid); */
-
-    // if(p->mlfq == 0){
-    //   // high priority proc: 1x time slice
-      
-    // } else {
-    //   // low priority proc 2x time slice
-
-    // }
-
     yield();
   }
 
