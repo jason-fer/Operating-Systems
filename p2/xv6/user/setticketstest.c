@@ -21,13 +21,13 @@ spin() {
 int
 main(int argc, char *argv[])
 {
-   int pids[2];
+   int pids[3];
    int ppid = getpid();
    int r, i, j;
 
    pids[0] = fork();
    if (pids[0] == 0) {
-      r = settickets(2);
+      r = settickets(10);
       if (r != 0) {
          printf(1, "settickets failed");
          kill(ppid);
@@ -37,7 +37,17 @@ main(int argc, char *argv[])
 
    pids[1] = fork();
    if (pids[1] == 0) {
-      r = settickets(4);
+      r = settickets(30);
+      if (r != 0) {
+         printf(1, "settickets failed");
+         kill(ppid);
+      }
+      spin();
+   }
+
+   pids[2] = fork();
+   if (pids[2] == 0) {
+      r = settickets(57);
       if (r != 0) {
          printf(1, "settickets failed");
          kill(ppid);
@@ -46,13 +56,16 @@ main(int argc, char *argv[])
    }
 
    int count = 0;
+   int incr = 10;
 
    // Header row:
    printf(1, "Time,Pid,cpu-time,total-cpu,tickets,total-tickets,queue\n");
 
-   for (; count < 100; count = count + 5) {
+   for (; count <= 100; count = count + incr) {
    
-     sleep(count);
+     if(count == 0) continue;
+
+     sleep(incr);
 
      int lticks[] = {-1, -1};
      int hticks[] = {-1, -1};
