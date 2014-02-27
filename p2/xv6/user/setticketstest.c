@@ -63,10 +63,6 @@ main(int argc, char *argv[])
 
    for (; count <= 100; count = count + incr) {
    
-     if(count == 0) continue;
-
-     sleep(incr);
-
      int lticks[] = {-1, -1};
      int hticks[] = {-1, -1};
      struct pstat st;
@@ -102,22 +98,10 @@ main(int argc, char *argv[])
             count, st.pid[i], st.hticks[i]+st.lticks[i], total_cpu_time, st.tickets[i], total_tickets, st.mlfq[i]?"low":"high" );
        }
      }
+
+     sleep(incr);
+
    }
 
-   /* for (i = 0; i < 2; i++) { */
-   /*    kill(pids[i]); */
-   /*    wait(); */
-   /* } */
-
-   /* for (i = 0; i < 2; i++) { */
-   /*    check(hticks[i] > 0 && lticks[i] > 0, "each process should have some hticks and lticks"); */
-   /* } */
-
-   /* float ratio = (float)lticks[0] / (float)lticks[1]; */
-   /* printf(1, "lticks child 1: %d\n", lticks[0]); */
-   /* printf(1, "lticks child 2: %d\n", lticks[1]); */
-   /* check(ratio > .25 && ratio < .75, "ratio should be about 1/2"); */
-
-   /* printf(1, "TEST PASSED\n"); */
    exit();
 }

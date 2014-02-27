@@ -364,15 +364,18 @@ scheduler(void)
         p->mlfq = LOW; // Low priority
         currProcessInfo.mlfq[i] = LOW; // Low priority
         ++p;
-      } else if (firstTime == 1) { // the missing ++p helps us to run second time
-        ++currProcessInfo.lticks[i];
-        --i;
-        firstTime = 0;
-      } else {
-        ++currProcessInfo.lticks[i];
-        ++p;
-      }
+      } 
 
+      if (highP == 0) {
+        if (firstTime == 1) { // the missing ++p helps us to run second time
+          ++currProcessInfo.lticks[i];
+          --i;
+          firstTime = 0;
+        } else {
+          ++currProcessInfo.lticks[i];
+          ++p;
+        }
+      }
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       proc = 0;
