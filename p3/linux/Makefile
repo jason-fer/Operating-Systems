@@ -1,10 +1,8 @@
 libmem.so: mem.o
-	gcc -g -m32 -shared -o libmem.so mem.o
-	false	#fail the build test since no makefile was turned in
+	gcc -g -shared -o libmem.so mem.o -m32 -Wall -Werror
 
 mem.o: mem.c mem.h
-	gcc -g -m32 -c -fpic -o mem.o mem.c
-    
+	gcc -g -c -fpic -o mem.o mem.c -m32 -Wall -Werror
 clean:
 	rm -rf mem.o libmem.so
 
