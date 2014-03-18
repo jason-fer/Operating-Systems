@@ -75,7 +75,7 @@ void* Mem_Alloc(int size, int style) {
   
   case FIRSTFIT:
     while (tmp != NULL && (returnP == NULL)) {
-      if ((tmp->free == 1) && (tmp->size > size)) {
+      if ((tmp->free == 1) && (tmp->size > (size + sizeof(node_t)))) {
         /* printf("Remaining size: %d!!\n", tmp->size); */
         /* printf("Request size: %d!!\n", size); */
         /* printf("Size of Node %zu\n",sizeof(node_t)); */
@@ -84,21 +84,26 @@ void* Mem_Alloc(int size, int style) {
         
         node_t* next = tmp->next;
 
-        double pointerInc = ((double)size)/((double)sizeof(node_t));
-        int ceilPointerInc = ceil(pointerInc);
+        double pointerInc     = ((double)size)/((double)sizeof(node_t));
+        int    ceilPointerInc = ceil(pointerInc);
+        int    initTmpSize    = tmp->size;
+        tmp->size             = ceilPointerInc*sizeof(node_t);
+        int    tmpSize        = initTmpSize - tmp->size;
 
-        int initTmpSize = tmp->size;
-
-        tmp->size = ceilPointerInc*sizeof(node_t);
-
-        int tmpSize = initTmpSize - tmp->size;
-
-        tmp->next = tmp + ceilPointerInc;
+        //Changing tmp node meaning current Node
+        if (tmp + ceilPointerInc < head + (initSize/sizeof(node_t))) {
+          tmp->next = tmp + ceilPointerInc;
+        } else {
+          tmp->next = NULL;
+        }
         tmp->free = 0;
         
-        tmp->next->size = tmpSize;
-        tmp->next->next = next;
-        tmp->next->free = 1;
+        // Setting values for next node
+        if (tmp->next) {
+          tmp->next->size = tmpSize;
+          tmp->next->next = next;
+          tmp->next->free = 1;
+        }
       } else {
         tmp = tmp->next;
       }
@@ -231,8 +236,12 @@ int Mem_Free(void* ptr) {
       if ( (tmp->free == 1) &&
            (tmp->next->free == 1) ) {
         tmp->size += tmp->next->size + sizeof(node_t);
+        tmp->free = 1;
         tmp->next = tmp->next->next;
-      }
+        // As the logic would just look for next 
+        // we don't want to go to next before checking again
+        continue; 
+      } 
       tmp = tmp->next;
     }
     return 0;
