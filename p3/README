@@ -1,0 +1,15 @@
++-------------------------------------------------------------------------------
+| Project 3
+| AUTHOR:   Jason Feriante & Rohit Kumar Jain
+| DATE:     25 Mar 2014
+| Email: feriante@cs.wisc.edu, rjain@cs.wisc.edu
+| Semester: CS537 Spring 2014
+| Section: LEC 001
+| Professor: Daniel Scott Myers
++-------------------------------------------------------------------------------
+
+Project 3a: Malloc and Free
+Simulate malloc and free with our own pool of memory.
+
+
+Project 3b: The Null Pointer
