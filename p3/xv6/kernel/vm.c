@@ -314,7 +314,7 @@ copyuvm(pde_t *pgdir, uint sz)
 
   // Allocate code through heap; modified for non-contiguous addr space
   // for(i = 0; i < USERTOP; i += PGSIZE){
-  for(i = 0; i < sz; i += PGSIZE){
+  for(i = PGSIZE; i < sz; i += PGSIZE){ // set to 1 for 2nd page -Jason
     // continue if addr is not valid
     if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
       panic("copyuvm: pte should exist");
