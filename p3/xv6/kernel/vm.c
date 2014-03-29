@@ -85,11 +85,11 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
   for(;;){
     pte = walkpgdir(pgdir, a, 1);
     if(pte == 0)
-      // return -1;
-      continue; // @todo: is this ok w/ sparse addr space? -Jason
+      return -1;
+      // continue; // @todo
     if(*pte & PTE_P)
-      // panic("remap");
-      continue; // @todo: is this ok w/ sparse addr space? -Jason
+      panic("remap");
+      // continue; 
     *pte = pa | perm | PTE_P;
     if(a == last)
       break;
@@ -109,9 +109,6 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
 // 
 // setupkvm() and exec() set up every page table like this:
 //   0..640K          : user memory (text, data, stack, heap)
-//******************************************************************************
-//   0..640K  : user memory (text, data, heap, stack) -Jason
-//******************************************************************************
 //   640K..1M         : mapped direct (for IO space)
 //   1M..end          : mapped direct (for the kernel's text and data)
 //   end..PHYSTOP     : mapped direct (kernel heap and user pages)
@@ -316,17 +313,17 @@ copyuvm(pde_t *pgdir, uint sz)
     return 0;
 
   // Allocate code through heap; modified for non-contiguous addr space
-  // for(i = 0; i < sz; i += PGSIZE){
-  for(i = 0; i < USERTOP; i += PGSIZE){
+  // for(i = 0; i < USERTOP; i += PGSIZE){
+  for(i = 0; i < sz; i += PGSIZE){
     // continue if addr is not valid
     if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
-      // panic("copyuvm: pte should exist");
+      panic("copyuvm: pte should exist");
       // Not all PTEs will exist in our sparse address space
-      continue;
+      // continue;
     if(!(*pte & PTE_P))
-      // panic("copyuvm: page not present");
+      panic("copyuvm: page not present");
       // Not all pages will be present in our spare address space 
-      continue; // @todo: is it OK to not panic here?
+      // continue; 
     pa = PTE_ADDR(*pte);
     if((mem = kalloc()) == 0)
       goto bad;
