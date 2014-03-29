@@ -86,10 +86,8 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
     pte = walkpgdir(pgdir, a, 1);
     if(pte == 0)
       return -1;
-      // continue; // @todo
     if(*pte & PTE_P)
       panic("remap");
-      // continue; 
     *pte = pa | perm | PTE_P;
     if(a == last)
       break;
@@ -298,9 +296,7 @@ freevm(pde_t *pgdir)
 }
 
 // Given a parent process's page table, create a copy
-// of it for a child. Modified for a non-contiguous address space. -Jason
-// Updated to copy from code to heap & then to copy from the top to the bottom
-// of the stack.
+// of it for a child. Skip the first page. -Jason
 pde_t*
 copyuvm(pde_t *pgdir, uint sz)
 {
@@ -314,12 +310,10 @@ copyuvm(pde_t *pgdir, uint sz)
 
   // Allocate code through heap; modified for non-contiguous addr space
   // for(i = 0; i < USERTOP; i += PGSIZE){
-  for(i = PGSIZE; i < sz; i += PGSIZE){ // set to 1 for 2nd page -Jason
+  for(i = PGSIZE; i < sz; i += PGSIZE){ // Skip the first page -Jason
     // continue if addr is not valid
     if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
       panic("copyuvm: pte should exist");
-      // Not all PTEs will exist in our sparse address space
-      // continue;
     if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
       // Not all pages will be present in our spare address space 
