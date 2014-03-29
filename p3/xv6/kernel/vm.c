@@ -85,9 +85,11 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
   for(;;){
     pte = walkpgdir(pgdir, a, 1);
     if(pte == 0)
-      return -1;
+      // return -1;
+      continue; // @todo: is this ok w/ sparse addr space? -Jason
     if(*pte & PTE_P)
-      panic("remap");
+      // panic("remap");
+      continue; // @todo: is this ok w/ sparse addr space? -Jason
     *pte = pa | perm | PTE_P;
     if(a == last)
       break;
@@ -107,6 +109,9 @@ mappages(pde_t *pgdir, void *la, uint size, uint pa, int perm)
 // 
 // setupkvm() and exec() set up every page table like this:
 //   0..640K          : user memory (text, data, stack, heap)
+//******************************************************************************
+//   0..640K  : user memory (text, data, heap, stack) -Jason
+//******************************************************************************
 //   640K..1M         : mapped direct (for IO space)
 //   1M..end          : mapped direct (for the kernel's text and data)
 //   end..PHYSTOP     : mapped direct (kernel heap and user pages)
@@ -231,9 +236,10 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   char *mem;
   uint a;
 
+  // USERTOP (640k) is the top of the user address space
   if(newsz > USERTOP)
     return 0;
-  if(newsz < oldsz)
+  if(newsz < oldsz) // doesn't allow us to shrink the page
     return oldsz;
 
   a = PGROUNDUP(oldsz);
@@ -244,7 +250,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       deallocuvm(pgdir, newsz, oldsz);
       return 0;
     }
-    memset(mem, 0, PGSIZE);
+    memset(mem, 0, PGSIZE); // clears the page (for security)
     mappages(pgdir, (char*)a, PGSIZE, PADDR(mem), PTE_W|PTE_U);
   }
   return newsz;
@@ -295,7 +301,9 @@ freevm(pde_t *pgdir)
 }
 
 // Given a parent process's page table, create a copy
-// of it for a child.
+// of it for a child. Modified for a non-contiguous address space. -Jason
+// Updated to copy from code to heap & then to copy from the top to the bottom
+// of the stack.
 pde_t*
 copyuvm(pde_t *pgdir, uint sz)
 {
@@ -306,11 +314,19 @@ copyuvm(pde_t *pgdir, uint sz)
 
   if((d = setupkvm()) == 0)
     return 0;
-  for(i = 0; i < sz; i += PGSIZE){
+
+  // Allocate code through heap; modified for non-contiguous addr space
+  // for(i = 0; i < sz; i += PGSIZE){
+  for(i = 0; i < USERTOP; i += PGSIZE){
+    // continue if addr is not valid
     if((pte = walkpgdir(pgdir, (void*)i, 0)) == 0)
-      panic("copyuvm: pte should exist");
+      // panic("copyuvm: pte should exist");
+      // Not all PTEs will exist in our sparse address space
+      continue;
     if(!(*pte & PTE_P))
-      panic("copyuvm: page not present");
+      // panic("copyuvm: page not present");
+      // Not all pages will be present in our spare address space 
+      continue; // @todo: is it OK to not panic here?
     pa = PTE_ADDR(*pte);
     if((mem = kalloc()) == 0)
       goto bad;
@@ -318,6 +334,7 @@ copyuvm(pde_t *pgdir, uint sz)
     if(mappages(d, (void*)i, PGSIZE, PADDR(mem), PTE_W|PTE_U) < 0)
       goto bad;
   }
+
   return d;
 
 bad:

@@ -50,6 +50,7 @@ exec(char *path, char **argv)
 
   // Allocate a one-page stack at the next page boundary
   sz = PGROUNDUP(sz);
+  //if((sz = allocuvm(pgdir, USERTOP - PGSIZE, USERTOP)) == 0)
   if((sz = allocuvm(pgdir, sz, sz + PGSIZE)) == 0)
     goto bad;
 
@@ -79,6 +80,12 @@ exec(char *path, char **argv)
     if(*s == '/')
       last = s+1;
   safestrcpy(proc->name, last, sizeof(proc->name));
+
+  // USERTOP - PGSIZE = user stack bottom ??? are we leading memory?
+  // how to get top of user stack?
+  // uint mystack = allocuvm(pgdir, USERTOP - PGSIZE, USERTOP);
+  //   if(mystack == 0)
+  //     panic("oh noes");
 
   // Commit to the user image.
   oldpgdir = proc->pgdir;

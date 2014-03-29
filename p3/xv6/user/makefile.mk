@@ -11,6 +11,7 @@ USER_PROGS := \
 	ls\
 	mkdir\
 	rm\
+	hello\
 	sh\
 	stressfs\
 	tester\
