@@ -79,6 +79,11 @@ sys_write(void)
 
   if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
     return -1;
+  // Do not allow user to attempt to write from an obvious out-of-bounds pointer
+  if((int) p < 4096)
+    // printf("ptr addr: %d\n", p);
+    return -1; // out of bounds
+
   return filewrite(f, p, n);
 }
 

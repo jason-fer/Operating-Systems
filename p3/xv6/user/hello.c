@@ -23,18 +23,16 @@ main(int argc, char *argv[])
     exit();
   }
 
-  printf(1, "File opened\n");
 
   // at zero
   arg = (char*) 0x0;
+
   // assert(write(fd, arg, 10) == -1);
   if(write(fd, arg, 10) != -1){
     printf(1, "assert failed (%s)\n", "write(fd, arg, 10)");
     printf(1, "TEST FAILED\n");
     exit();
   }
-
-  printf(1, "File written 1\n");
 
   // within null page
   arg = (char*) 0x400;
