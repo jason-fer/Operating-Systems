@@ -60,7 +60,8 @@ int Mem_Init(int sizeOfRegion) {
 }
 
 
-void* Mem_Alloc(int size, int style) {
+//void* Mem_Alloc(int size, int style) {
+void* Mem_Alloc(int size) {
   /* Mem_Dump(); */
   
   node_t* tmp          = head;
@@ -71,6 +72,7 @@ void* Mem_Alloc(int size, int style) {
   int currDiff;
   int bestDiff;
   int worstDiff;
+  int style = 0;
 
   switch (style) {
   
@@ -228,14 +230,17 @@ int Mem_Free(void* ptr) {
     return 0;
   }
 
-  int freed = 0;
-  node_t* tmp = head;
+  int     freed     = 0;
+  int     coalesced = 0;
+  node_t* tmp       = head;
+  node_t* freedTmp  = NULL;
 
   while (tmp != NULL) {
     if ( ((node_t*)ptr) == (tmp+1) ) {
       /* printf("Deallocating %p\n", ptr); */
       tmp->free = 1;
       freed = 1;
+      freedTmp = tmp;
       break;
     } else {
       tmp = tmp->next;
@@ -251,12 +256,17 @@ int Mem_Free(void* ptr) {
         tmp->size += tmp->next->size + sizeof(node_t);
         tmp->free = 1;
         tmp->next = tmp->next->next;
+        coalesced = 1;
         // As the logic would just look for next 
         // we don't want to go to next before checking again
         continue; 
       } 
-
+ 
       tmp = tmp->next;
+    }
+
+    if (freedTmp != NULL && coalesced != 1) {
+      freedTmp->size += sizeof(node_t);
     }
     return 0;
   } else {
