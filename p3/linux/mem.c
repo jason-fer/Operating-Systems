@@ -24,7 +24,6 @@ node_t* head = NULL;
 int initSize;
 
 int Mem_Init(int sizeOfRegion) {
-  /* printf("calling: Mem_Init()!\n"); */
   
   if (sizeOfRegion <= 0) {
     perror("mmap");
@@ -52,7 +51,7 @@ int Mem_Init(int sizeOfRegion) {
     return -1;
   }
   
-  printf ("Init size is %d\n", allocSize);
+  /* printf ("Init size is %d\n", allocSize); */
   head        = (node_t*)ptr;
   head->size  = allocSize;
   head->next  = NULL;
@@ -75,7 +74,7 @@ void* Mem_Alloc(int size) {
 
   while (tmp != NULL && (returnP == NULL)) {
 
-    if ((tmp->free != 1) || (tmp->size < (size + sizeof(node_t)))) {
+    if ((tmp->free != 1) || (tmp->size < size) ) {
       tmp = tmp->next;
       continue;
     } 
@@ -83,6 +82,11 @@ void* Mem_Alloc(int size) {
     double pointerInc = 
       ((double)(size + sizeof(node_t)))/((double)sizeof(node_t));
     int ceilPointerInc = ceil(pointerInc);
+
+    if ((tmp + (ceilPointerInc)) == tmp->next) {
+      bestFitNode = tmp;
+      break;
+    }
 
     if (tmp->size < ceilPointerInc*sizeof(node_t)) {
       tmp = tmp->next;
@@ -96,10 +100,7 @@ void* Mem_Alloc(int size) {
     }
     tmp = tmp->next;
   }
-  /* printf("Remaining size: %d!!\n", tmp->size); */
-  /* printf("Request size: %d!!\n", size); */
-  /* printf("Size of void*: %zu\n", sizeof(void*)); */
-  /* printf ("Allocating pointer %p \n", tmp); */
+
   if (!bestFitNode) {
     printf("Not enough memory for %d request\n", size);
     m_error = E_NO_SPACE;
@@ -125,7 +126,6 @@ void* Mem_Alloc(int size) {
     bestFitNode->next = NULL;
   }
     
-  /* bestFitNode->size = size; */
   bestFitNode->free = 0;
       
   if (next != bestFitNode->next) {
@@ -185,9 +185,6 @@ int Mem_Free(void* ptr) {
       tmp = tmp->next;
     }
 
-    /* if (freedTmp != NULL && coalesced != 1) { */
-    /*   freedTmp->size += sizeof(node_t); */
-    /* } */
     /* Mem_Dump(); */
     return 0;
   } else {
