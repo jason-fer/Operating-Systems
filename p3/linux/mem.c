@@ -7,14 +7,15 @@
 #include <limits.h>
 #include <math.h>
 #include "mem.h"
+#include <stdint.h>
 
 int m_error;
 
 typedef struct __node_t node_t;
 
 struct __node_t {
-  int16_t size;
-  int16_t free;
+  uint32_t size;
+  uint8_t free;
   node_t* next;
 };
 
@@ -62,7 +63,6 @@ int Mem_Init(int sizeOfRegion) {
 
 //void* Mem_Alloc(int size, int style) {
 void* Mem_Alloc(int size) {
-  /* Mem_Dump(); */
   
   node_t* tmp          = head;
   node_t* bestFitNode  = NULL;
@@ -124,6 +124,15 @@ void* Mem_Alloc(int size) {
         continue;
       } 
 
+      double pointerInc = 
+        ((double)(size + sizeof(node_t)))/((double)sizeof(node_t));
+      int ceilPointerInc = ceil(pointerInc);
+
+      if (tmp->size < ceilPointerInc*sizeof(node_t)) {
+        tmp = tmp->next;
+        continue;
+      }
+
       currDiff = tmp->size - size;
       if (currDiff < bestDiff) {
         bestDiff = currDiff;
@@ -157,11 +166,11 @@ void* Mem_Alloc(int size) {
     } else {
       bestFitNode->next = NULL;
     }
-
+    
     bestFitNode->size = size;
     bestFitNode->free = 0;
       
-    if (bestFitNode->next) {
+    if (next != bestFitNode->next) {
       bestFitNode->next->size = bestTmpSize;
       bestFitNode->next->next = next;
       bestFitNode->next->free = 1;
@@ -220,6 +229,7 @@ void* Mem_Alloc(int size) {
     m_error = E_NO_SPACE;
   }
   
+  /* Mem_Dump(); */
   return returnP;
 }
 
@@ -268,6 +278,7 @@ int Mem_Free(void* ptr) {
     if (freedTmp != NULL && coalesced != 1) {
       freedTmp->size += sizeof(node_t);
     }
+    /* Mem_Dump(); */
     return 0;
   } else {
     m_error = E_BAD_POINTER;
