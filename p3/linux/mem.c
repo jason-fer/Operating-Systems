@@ -51,7 +51,8 @@ int Mem_Init(int sizeOfRegion) {
     m_error = E_CORRUPT_FREESPACE;
     return -1;
   }
-
+  
+  printf ("Init size is %d\n", allocSize);
   head        = (node_t*)ptr;
   head->size  = allocSize;
   head->next  = NULL;
@@ -61,169 +62,78 @@ int Mem_Init(int sizeOfRegion) {
 }
 
 
-//void* Mem_Alloc(int size, int style) {
 void* Mem_Alloc(int size) {
   
   node_t* tmp          = head;
   node_t* bestFitNode  = NULL;
-  node_t* worstFitNode = NULL;
   void*   returnP      = NULL;
 
   int currDiff;
   int bestDiff;
-  int worstDiff;
-  int style = 0;
 
-  switch (style) {
-  
-  case FIRSTFIT:
-    while (tmp != NULL && (returnP == NULL)) {
-      if ((tmp->free == 1) && (tmp->size > (size + sizeof(node_t)))) {
-        /* printf("Remaining size: %d!!\n", tmp->size); */
-        /* printf("Request size: %d!!\n", size); */
-        /* printf("Size of Node %zu\n",sizeof(node_t)); */
-        /* printf ("Allocating pointer %p \n", tmp); */
-        returnP        = tmp + 1;
-        
-        node_t* next = tmp->next;
+  bestDiff = INT_MAX;
 
-        double pointerInc     = 
-          ((double)(sizeof(node_t) + size))/((double)sizeof(node_t));
-        int    ceilPointerInc = ceil(pointerInc);
-        int    initTmpSize    = tmp->size;
-        tmp->size             = ceilPointerInc*sizeof(node_t);
-        int    tmpSize        = initTmpSize - tmp->size;
+  while (tmp != NULL && (returnP == NULL)) {
 
-        //Changing tmp node meaning current Node
-        if (tmp + ceilPointerInc < head + (initSize/sizeof(node_t))) {
-          tmp->next = tmp + ceilPointerInc;
-        } else {
-          tmp->next = NULL;
-        }
-        tmp->free = 0;
-        
-        // Setting values for next node
-        if (tmp->next) {
-          tmp->next->size = tmpSize;
-          tmp->next->next = next;
-          tmp->next->free = 1;
-        }
-      } else {
-        tmp = tmp->next;
-      }
-    }
-    break;
-
-  case BESTFIT:
-    bestDiff = INT_MAX;
-
-    while (tmp != NULL && (returnP == NULL)) {
-
-      if ((tmp->free != 1) || (tmp->size < (size + sizeof(node_t)))) {
-        tmp = tmp->next;
-        continue;
-      } 
-
-      double pointerInc = 
-        ((double)(size + sizeof(node_t)))/((double)sizeof(node_t));
-      int ceilPointerInc = ceil(pointerInc);
-
-      if (tmp->size < ceilPointerInc*sizeof(node_t)) {
-        tmp = tmp->next;
-        continue;
-      }
-
-      currDiff = tmp->size - size;
-      if (currDiff < bestDiff) {
-        bestDiff = currDiff;
-        bestFitNode = tmp;
-      }
+    if ((tmp->free != 1) || (tmp->size < (size + sizeof(node_t)))) {
       tmp = tmp->next;
-    }
-    /* printf("Remaining size: %d!!\n", tmp->size); */
-    /* printf("Request size: %d!!\n", size); */
-    /* printf("Size of void*: %zu\n", sizeof(void*)); */
-    /* printf ("Allocating pointer %p \n", tmp); */
-    if (!bestFitNode) {
-      break;
-    }
-
-    returnP        = bestFitNode + 1;
+      continue;
+    } 
 
     double pointerInc = 
       ((double)(size + sizeof(node_t)))/((double)sizeof(node_t));
     int ceilPointerInc = ceil(pointerInc);
 
-    int bestTmpSize = bestFitNode->size;
-    bestFitNode->size = ceilPointerInc*sizeof(node_t);
-    bestTmpSize -= bestFitNode->size;
-      
-    node_t* next = bestFitNode->next;
-    
-    //Changing best fit node
-    if ((bestFitNode + ceilPointerInc) < (head + (initSize/sizeof(node_t)))) {
-      bestFitNode->next = bestFitNode + ceilPointerInc;
-    } else {
-      bestFitNode->next = NULL;
-    }
-    
-    bestFitNode->size = size;
-    bestFitNode->free = 0;
-      
-    if (next != bestFitNode->next) {
-      bestFitNode->next->size = bestTmpSize;
-      bestFitNode->next->next = next;
-      bestFitNode->next->free = 1;
-    }
-
-    break;
-
-  case WORSTFIT:
-    worstDiff = INT_MIN;
-
-    while (tmp != NULL && (returnP == NULL)) {
-      if ((tmp->free != 1) || (tmp->size < size)) {
-        tmp = tmp->next;
-        continue;
-      }
-
-      currDiff = tmp->size - size;
-      if (currDiff > worstDiff) {
-        worstDiff = currDiff;
-        worstFitNode = tmp;
-      }
+    if (tmp->size < ceilPointerInc*sizeof(node_t)) {
       tmp = tmp->next;
-    }
-    /* printf("Remaining size: %d!!\n", tmp->size); */
-    /* printf("Request size: %d!!\n", size); */
-    /* printf("Size of void*: %zu\n", sizeof(void*)); */
-    /* printf ("Allocating pointer %p \n", tmp); */
-    if (!worstFitNode) {
-      break;
+      continue;
     }
 
-    returnP        = worstFitNode + 1;
-
-    pointerInc = 
-      ((double)(size + sizeof(node_t)))/((double)sizeof(node_t));
-    ceilPointerInc = ceil(pointerInc);
-
-    int worstTmpSize = worstFitNode->size;
-    worstFitNode->size = ceilPointerInc*sizeof(node_t);
-    worstTmpSize -= worstFitNode->size;
-      
-    next = worstFitNode->next;
-    
-    worstFitNode->size = size;
-    worstFitNode->next = worstFitNode + ceilPointerInc;
-    worstFitNode->free = 0;
-      
-    worstFitNode->next->size = worstTmpSize;
-    worstFitNode->next->next = next;
-    worstFitNode->next->free = 1;
-    break;
+    currDiff = tmp->size - size;
+    if (currDiff < bestDiff) {
+      bestDiff = currDiff;
+      bestFitNode = tmp;
+    }
+    tmp = tmp->next;
   }
-  
+  /* printf("Remaining size: %d!!\n", tmp->size); */
+  /* printf("Request size: %d!!\n", size); */
+  /* printf("Size of void*: %zu\n", sizeof(void*)); */
+  /* printf ("Allocating pointer %p \n", tmp); */
+  if (!bestFitNode) {
+    printf("Not enough memory for %d request\n", size);
+    m_error = E_NO_SPACE;
+    return returnP;
+  }
+
+  returnP        = bestFitNode + 1;
+
+  double pointerInc = 
+    ((double)(size + sizeof(node_t)))/((double)sizeof(node_t));
+  int ceilPointerInc = ceil(pointerInc);
+
+  int bestTmpSize = bestFitNode->size;
+  bestFitNode->size = (ceilPointerInc-1)*sizeof(node_t);
+  bestTmpSize -= (bestFitNode->size + sizeof(node_t));
+      
+  node_t* next = bestFitNode->next;
+    
+  //Changing best fit node
+  if ((bestFitNode + ceilPointerInc) < (head + (initSize/sizeof(node_t)))) {
+    bestFitNode->next = bestFitNode + ceilPointerInc;
+  } else {
+    bestFitNode->next = NULL;
+  }
+    
+  /* bestFitNode->size = size; */
+  bestFitNode->free = 0;
+      
+  if (next != bestFitNode->next) {
+    bestFitNode->next->size = bestTmpSize;
+    bestFitNode->next->next = next;
+    bestFitNode->next->free = 1;
+  }
+
   if (!returnP) {
     printf("Not enough memory for %d request\n", size);
     m_error = E_NO_SPACE;
@@ -275,9 +185,9 @@ int Mem_Free(void* ptr) {
       tmp = tmp->next;
     }
 
-    if (freedTmp != NULL && coalesced != 1) {
-      freedTmp->size += sizeof(node_t);
-    }
+    /* if (freedTmp != NULL && coalesced != 1) { */
+    /*   freedTmp->size += sizeof(node_t); */
+    /* } */
     /* Mem_Dump(); */
     return 0;
   } else {
