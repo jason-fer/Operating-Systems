@@ -19,6 +19,9 @@ fetchint(struct proc *p, uint addr, int *ip)
 {
   if(addr >= p->sz || addr+4 > p->sz)
     return -1;
+  // Wait for CPU to finish initializing, then don't allow low pointer values.
+  if(p->sz > 4096 && addr < 4096)
+    return -1;
   *ip = *(int*)(addr);
   return 0;
 }
@@ -32,6 +35,9 @@ fetchstr(struct proc *p, uint addr, char **pp)
   char *s, *ep;
 
   if(addr >= p->sz)
+    return -1;
+  // Wait for CPU to finish initializing, then don't allow low pointer values.
+  if(p->sz > 4096 && addr < 4096)
     return -1;
   *pp = (char*)addr;
   ep = (char*)p->sz;
@@ -116,8 +122,7 @@ syscall(void)
   if(num > 0 && num < NELEM(syscalls) && syscalls[num] != NULL) {
     proc->tf->eax = syscalls[num]();
   } else {
-    cprintf("%d %s: unknown sys call %d\n",
-            proc->pid, proc->name, num);
+    cprintf("%d %s: unknown sys call %d\n", proc->pid, proc->name, num);
     proc->tf->eax = -1;
   }
 }
