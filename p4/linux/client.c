@@ -87,6 +87,7 @@ int main(int argc, char *argv[])
 	filename = argv[3];
 
 	/* Open a single connection to the specified host and port */
+	// @todo: make this multi-threaded to more effectively test our server
 	clientfd = Open_clientfd(host, port);
 	
 	clientSend(clientfd, filename);
