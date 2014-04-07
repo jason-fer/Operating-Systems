@@ -69,3 +69,7 @@ runtests.log
 /p2/xv6/kernel/bio.d
 
 /p2/.~lock.Datapoints.xlsx\#
+
+/p4/linux/client
+/p4/linux/output.cgi
+/p4/linux/server
