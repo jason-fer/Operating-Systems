@@ -1,22 +1,27 @@
 #include "cs537.h"
 #include "request.h"
-#include "pthread.h"
 
-// 
-// server.c: A very, very simple web server
-//
-// To run:
-//  server <portnum (above 2000)>
-//
-// Repeatedly handles HTTP requests sent to this port number.
-// Most of the work is done within routines written in request.c
-//
+/**
+ * server.c: A very, very simple web server
+ *
+ * Repeatedly handles HTTP requests sent to the port number.
+ * Most of the work is done within routines written in request.c
+ *
+ * Generates a threadpool and buffer size based on specified sizes (both must)
+ * be > 0. 
+ */
+request_buffer *buffer; // a list of connection file descriptors
+int buffers = 0; // max buffers
+int numfull = 0; // number of items currently in the buffer
+// pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+// pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
+// pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
 
 /**
  * Usage: 
- * prompt> server [portnum] [threads] [buffers] [schedalg]
+ * prompt> ./server [portnum] [threads] [buffers] [schedalg]
  * 
- * -portnum: the port number to listen on
+ * -portnum: the port number to listen on (above 2000)
  * -threads: size  of server worker thread pool
  * -buffers: # of request connections that can be accepted @ one time. 
  * -schedalg: must be FIFO, SFNF or SFF
@@ -63,16 +68,39 @@ void *producer_listen(void *portnum)
 		// Save the relevant info in a buffer and have one of the worker threads 
 		// do the work. However, for SFF, you may have to do a little work
 		// here (e.g., a stat() on the filename) ...
-		// 
-		requestHandle(connfd);
+		//
+		requestFillBuffer(&buffer[numfull], connfd);
+		numfull++;
 
-		Close(connfd);
+		// Dump the buffer data
+		if(numfull == buffers){
+			for (int i = 0; i < buffers; i++)
+			{
+				printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
+				printf("buffer[%d].filesize %d\n", i, buffer[i].filesize);
+				printf("buffer[%d].filename %s\n", i, buffer[i].filename);
+			}
+			exit(1);
+		}
+
+		// requestHandle(connfd);
+		// Close(connfd);
+	}
+}
+
+/**
+ * Function for the consumers in the threadpool
+ */
+void *consumer_handle_requests()
+{
+	while (1) {
+
 	}
 }
 
 int main(int argc, char *argv[])
 {
-	int port, threads, buffers;
+	int port, threads;
 	
 	// Policies:
 	// -First-in-First-out (FIFO)
@@ -89,6 +117,36 @@ int main(int argc, char *argv[])
 	getargs(&port, &threads, &buffers, &schedalg, argc, argv);
 	printf("port:%d, threads:%d, buffers:%d, (did it work?) schedalg:%s \n", port, threads, buffers, schedalg);
 
+	buffer = (request_buffer *) malloc(buffers * sizeof(request_buffer));
+
+	// Init the buffer
+	for (int i = 0; i < buffers; i++)
+	{
+		// buffer[i].connfd = (int) malloc(sizeof(int));
+		buffer[i].filesize = 0;
+		buffer[i].connfd = 0;
+		buffer[i].filename = strdup("");
+	}
+	// for (int i = 0; i < buffers; i++)
+	// {
+	// 	printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
+	// 	printf("buffer[%d].filesize %d\n", i, buffer[i].filesize);
+	// 	printf("buffer[%d].filename %s\n", i, buffer[i].filename);
+	// }
+	// exit(1);
+
+	pthread_t pid, cid[threads];
+
+	// Init the master (producer)
+	pthread_create(&pid, NULL, producer_listen, (void*) &port);
+	for (int i = 0; i < threads; i++)
+	{
+		// Init the worker thread pool
+		// child threads (start w/ one for simplicity)
+		pthread_create(&cid[0], NULL, consumer_handle_requests, NULL);
+		break;
+	}
+
 	/**
 	 * Create a fixed size pool of worker (consumer) threads.
 	 * -cond var: wait if buffer is empty
@@ -97,30 +155,18 @@ int main(int argc, char *argv[])
 	 * -read network descriptor, & run requestServeDynamic or 
 	 * requestServeStatic
 	 */
-	// producer_listen((void*) &port);
-	pthread_t pid;//, cid[threads];
-	pthread_create(&pid, NULL, producer_listen, (void*) &port);
+
+	// mutex, conds: empty / fill
+	// pthread_mutex_lock(&m);
+	// access critical region
+	// pthread_cond_signal(&c);
+	// pthread_mutex_unlock(&m);
+
+	// pthread_cond_wait(&c, &m);
+	// pthread_cond_signal(&c);
+
 	pthread_join(pid, NULL);
-	
-	// // for (int i = 0; i < threads; i++)
-	// // {
-	// // 	// int pthread_create(&pid, NULL, producer_listen, &port);		 
- // // 		 // int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
-	// // }
-
-
-	/**
-	 * Commands to use:
-	 * thread_create, pthread_mutex_init, pthread_mutex_lock, pthread_mutex_unlock, 
-	 * pthread_cond_init, pthread_cond_wait, pthread_cond_signal
-	 */
-	
-
-
+	pthread_join(cid[0], NULL);
 }
 
 
-	
-
-
- 

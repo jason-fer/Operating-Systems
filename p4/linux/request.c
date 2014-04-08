@@ -146,6 +146,31 @@ void requestServeStatic(int fd, char *filename, int filesize)
 
 }
 
+/**
+ * Fill out the buffer data; add the filename & file size in addition to the 
+ * file descriptor
+ */
+void requestFillBuffer(request_buffer *buffer, int fd)
+{
+	struct stat sbuf;
+	char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
+	char filename[MAXLINE], cgiargs[MAXLINE];
+	rio_t rio;
+
+	Rio_readinitb(&rio, fd);
+	Rio_readlineb(&rio, buf, MAXLINE);
+	sscanf(buf, "%s %s %s", method, uri, version);
+	requestParseURI(uri, filename, cgiargs);
+
+	// struct stat buf; // Hold the fstat data so we can determine file name & size.
+	stat(filename + 1, &sbuf);
+	buffer->filesize = (int) sbuf.st_size;
+	buffer->connfd = fd;
+	buffer->filename = filename + 1;
+	// printf("size: %d\n", buffer->filesize);
+	// printf("buffer filename: %s\n", buffer->filename);
+}
+
 // handle a request
 void requestHandle(int fd)
 {

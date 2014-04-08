@@ -23,6 +23,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 
 /* Default file permissions are DEF_MODE & ~DEF_UMASK */
@@ -30,6 +31,15 @@
 #define DEF_MODE   S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH
 #define DEF_UMASK  S_IWGRP|S_IWOTH
 /* $end createmasks */
+
+/* To keep track of client requests in the buffer */
+/* $begin request_buffer */
+typedef struct {
+    int filesize; // in bytes
+    int connfd; // connection file descriptor
+    char *filename;
+} request_buffer;
+/* $end request_buffer */
 
 /* Simplifies calls to bind(), connect(), and accept() */
 /* $begin sockaddrdef */
