@@ -88,12 +88,19 @@ int main(int argc, char *argv[])
 
 	/* Open a single connection to the specified host and port */
 	// @todo: make this multi-threaded to more effectively test our server
-	clientfd = Open_clientfd(host, port);
-	
-	clientSend(clientfd, filename);
-	clientPrint(clientfd);
-		
-	Close(clientfd);
+	for (int i = 0; i < 5; ++i)
+	{
+		clientfd = Open_clientfd(host, port);
+		// Start several requests in a row & don't wait
+		clientSend(clientfd, filename);
+		// clientPrint(clientfd);
+			
+		// Close(clientfd);
+	}
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, filename);
+	// clientPrint(clientfd);
+	// Close(clientfd);
 
 	exit(0);
 }

@@ -148,9 +148,9 @@ void requestServeStatic(int fd, char *filename, int filesize)
 
 /**
  * Fill out the buffer data; add the filename & file size in addition to the 
- * file descriptor
+ * file descriptor.
  */
-void requestFillBuffer(request_buffer *buffer, int fd)
+void queueRequest(request_buffer *buffer, int fd)
 {
 	struct stat sbuf;
 	char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
@@ -169,6 +169,17 @@ void requestFillBuffer(request_buffer *buffer, int fd)
 	buffer->filename = filename + 1;
 	// printf("size: %d\n", buffer->filesize);
 	// printf("buffer filename: %s\n", buffer->filename);
+}
+
+/**
+ * Remove a request from the buffer
+ */
+void dequeueRequest(request_buffer *buffer)
+{
+	// Wipe out the data in the buffer
+	buffer->filesize = 0;
+	buffer->connfd = 0;
+	buffer->filename = "";
 }
 
 // handle a request
