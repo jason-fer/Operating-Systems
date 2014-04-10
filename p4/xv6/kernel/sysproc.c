@@ -15,7 +15,20 @@ sys_fork(void)
 int
 sys_clone(void)
 {
-  return clone();
+  char* placeHolder;
+  void(*fcn)(void*);
+  int size = sizeof(fcn);
+  argptr(0, &placeHolder, size);
+
+  fcn = (void (*) (void *))(placeHolder);
+
+  argptr(1, &placeHolder, sizeof(void*));
+  void* arg = (void*)placeHolder;
+
+  argptr(2, &placeHolder, sizeof(void*));
+  void* stack = (void*)placeHolder;
+
+  return clone(fcn, arg, stack);
 }
 
 int

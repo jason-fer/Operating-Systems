@@ -163,7 +163,7 @@ fork(void)
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
 int
-clone(void)
+clone(void (*fcn)(void*), void* arg, void* stack)
 {
   int i, pid;
   struct proc *np;
@@ -172,16 +172,22 @@ clone(void)
   if((np = allocproc()) == 0)
     return -1;
 
-  // Copy process state from p.
-  if((np->pgdir = copyuvm(proc->pgdir, proc->sz)) == 0){
-    kfree(np->kstack);
-    np->kstack = 0;
-    np->state = UNUSED;
-    return -1;
-  }
-  np->sz = proc->sz;
+  // Keeping the same address space
+  np->pgdir  = proc->pgdir;
+
+  // Copy process state from p
+  np->sz     = proc->sz;
   np->parent = proc;
-  *np->tf = *proc->tf;
+  *np->tf    = *proc->tf;
+
+  // May be just making %esp point to the passed stack
+  // would be enough? That can be accomplished by changing 
+  // np->tf->esp to point to the new stack
+
+  // Also for accomplishing "The new thread starts
+  // executing at the address specified by fcn" we
+  // should change the %ebp (base pointer) in such
+  // a way that before return it points to fcn.
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
