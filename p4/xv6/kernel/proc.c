@@ -192,15 +192,16 @@ clone(void (*fcn)(void*), void* arg, void* stack)
   /* np->tf->esp = (uint)stack; */
   /* np->tf->ebp = (uint)fcn; */
   
-  uint ustack[2];
+  uint ustack[3];
 
-  /* ustack[0] = 0xffffffff; // fake return PC */
   ustack[0] = (uint)fcn;
-  ustack[1] = (uint)arg;
+  ustack[1] = 0xffffffff; // fake return PC
+  ustack[2] = (uint)arg;
 
-  memmove(stack, ustack, 2);
+  /* np->tf->ebp = (uint)(stack+4); */
+  memmove(stack, ustack, 12);
   np->tf->esp = (uint)stack;
-  np->tf->ebp = np->tf->esp;
+  /* np->tf->eip = 0xffffffff; */
   /* *(stack + 8) = arg; */
   /* *(stack + 4) = np->tf->ebp; */
 
