@@ -141,9 +141,10 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
-  np->sz = proc->sz;
+
+  np->sz     = proc->sz;
   np->parent = proc;
-  *np->tf = *proc->tf;
+  *np->tf    = *proc->tf;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -180,14 +181,28 @@ clone(void (*fcn)(void*), void* arg, void* stack)
   np->parent = proc;
   *np->tf    = *proc->tf;
 
-  // May be just making %esp point to the passed stack
-  // would be enough? That can be accomplished by changing 
-  // np->tf->esp to point to the new stack
-
+  // Copy the whole stack except that I want to remove
+  // the arguments and change the return address
+  // 3 arguments + 1 return address = total 4 entries
+  
   // Also for accomplishing "The new thread starts
   // executing at the address specified by fcn" we
   // should change the %ebp (base pointer) in such
   // a way that before return it points to fcn.
+  /* np->tf->esp = (uint)stack; */
+  /* np->tf->ebp = (uint)fcn; */
+  
+  uint ustack[2];
+
+  /* ustack[0] = 0xffffffff; // fake return PC */
+  ustack[0] = (uint)fcn;
+  ustack[1] = (uint)arg;
+
+  memmove(stack, ustack, 2);
+  np->tf->esp = (uint)stack;
+  np->tf->ebp = np->tf->esp;
+  /* *(stack + 8) = arg; */
+  /* *(stack + 4) = np->tf->ebp; */
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
