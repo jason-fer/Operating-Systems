@@ -25,10 +25,34 @@ sys_clone(void)
   argptr(1, &placeHolder, sizeof(void*));
   void* arg = (void*)placeHolder;
 
-  argptr(2, &placeHolder, sizeof(void*));
+  if (argptr(2, &placeHolder, PGSIZE) < 0)
+    return -1;
+
   void* stack = (void*)placeHolder;
 
   return clone(fcn, arg, stack);
+}
+
+int
+sys_join(void)
+{
+  int placeHolder;
+  void** stack;
+
+  if (argint(0, &placeHolder) < 0)
+    return -1;
+
+  stack = (void**)(placeHolder);
+  /* int* addr = (uint*)stack; */
+  int stackVal;
+
+  if (fetchint(proc, placeHolder, &stackVal) < 0)
+    return -1;
+
+  if (stackVal%PGSIZE != 0)
+    return -1;
+
+  return join(stack);
 }
 
 int
