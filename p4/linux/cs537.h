@@ -32,15 +32,6 @@
 #define DEF_UMASK  S_IWGRP|S_IWOTH
 /* $end createmasks */
 
-/* To keep track of client requests in the buffer */
-/* $begin request_buffer */
-typedef struct {
-    int filesize; // in bytes
-    int connfd; // connection file descriptor
-    char *filename;
-} request_buffer;
-/* $end request_buffer */
-
 /* Simplifies calls to bind(), connect(), and accept() */
 /* $begin sockaddrdef */
 typedef struct sockaddr SA;
@@ -65,6 +56,23 @@ extern char **environ; /* defined by libc */
 #define MAXLINE  8192  /* max text line length */
 #define MAXBUF   8192  /* max I/O buffer size */
 #define LISTENQ  1024  /* second argument to listen() */
+
+/* To keep track of client requests in the buffer */
+/* $begin request_buffer */
+typedef struct {
+  int filesize; // in bytes
+  int connfd; // connection file descriptor
+  int is_static;
+  char buf[MAXLINE];
+  char method[MAXLINE];
+  char uri[MAXLINE];
+  char version[MAXLINE];
+  char filename[MAXLINE];
+  char cgiargs[MAXLINE];
+  struct stat sbuf;
+  rio_t rio;
+} request_buffer;
+/* $end request_buffer */
 
 /* Our own error-handling functions */
 void unix_error(char *msg);

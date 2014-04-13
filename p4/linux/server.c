@@ -56,7 +56,7 @@ void *producer_fill(void *portnum)
 	int *port = (int*) portnum;
 	// printf("(int) port: %d\n", *port);
 	// exit(1);
-	int listenfd, connfd, clientlen;
+	int listenfd, clientlen;
 	listenfd = Open_listenfd(*port); // This opens a socket & listens on port #
 	struct sockaddr_in clientaddr;
 
@@ -76,18 +76,18 @@ void *producer_fill(void *portnum)
 			pthread_cond_wait(&empty, &m);
 		}
 		clientlen = sizeof(clientaddr);
-		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+		buffer[numfull].connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
 		// 
 		// CS537: In general, don't handle the request in the main thread.
 		// Save the relevant info in a buffer and have one of the worker threads 
 		// do the work. However, for SFF, you may have to do a little work
 		// here (e.g., a stat() on the filename) ...
 		//
-		queueRequest(&buffer[numfull], connfd);
+		queueRequest(&buffer[numfull]);
+		requestHandle(&buffer[numfull]);
 		numfull++;
 		pthread_cond_signal(&fill);
 		pthread_mutex_unlock(&m);
-		// requestHandle(connfd);
 		// Close(connfd);
 	}
 }
@@ -106,7 +106,7 @@ void *consumer_empty()
 		// Fulfill request
 		requestHandle(buffer[numfull].connfd);
 		Close(buffer[numfull].connfd);
-		dequeueRequest(&buffer[numfull]);
+		// wipe out item in buffer
 		// Make sure to decrement the number of requests in the queue so we don't
 		// fullfill the same request twice....
 		numfull--;
@@ -139,7 +139,6 @@ int main(int argc, char *argv[])
 	{
 		buffer[i].filesize = 0;
 		buffer[i].connfd = 0;
-		buffer[i].filename = strdup("");
 	}
 
 	pthread_t pid, cid[threads];
