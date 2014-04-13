@@ -147,7 +147,7 @@ void requestServeStatic(int fd, char *filename, int filesize)
 }
 
 /**
- * Fill out the buffer data; we can only read the socket once, so dump 
+ * Fill out the buffer data; we can only read from the socket once, so dump 
  * everything into the buffer.
  */
 void queueRequest(request_buffer *buffer)
@@ -169,6 +169,11 @@ void requestHandle(request_buffer *buffer)
 	printf("%s %s %s\n", buffer->method, buffer->uri, buffer->version);
 
 	if (strcasecmp(buffer->method, "GET")) {
+		// Dump the buffer data
+		// printf("buffer->connfd %d\n", buffer->connfd);
+		// printf("buffer->filesize %d\n", buffer->filesize);
+		// printf("buffer->filename %s\n", buffer->filename);
+		// printf("buffer->method %s\n", buffer->method);
 		requestError(buffer->connfd, buffer->method, "501", "Not Implemented", "CS537 Server does not implement this method");
 		return;
 	}
