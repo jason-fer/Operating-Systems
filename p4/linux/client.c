@@ -105,21 +105,21 @@ int main(int argc, char *argv[])
 	clientSend(clientfd, "/1.html");
 	Close(clientfd);
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/2.html");
-	Close(clientfd);
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/2.html");
+	// Close(clientfd);
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/3.html");
-	Close(clientfd);
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/3.html");
+	// Close(clientfd);
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/4.html");
-	Close(clientfd);
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/4.html");
+	// Close(clientfd);
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/5.html");
-	Close(clientfd);
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/5.html");
+	// Close(clientfd);
 
 	// 	clientfd = Open_clientfd(host, port);
 	// clientSend(clientfd, "/1.cgi?10");

@@ -29,7 +29,7 @@ pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
  * (threads & buffers must both be > 0)
  * @todo: parse the new arguments
  */
-void getargs(int *port, int *threads, volatile int *buffers, char **schedalg, int argc, char *argv[])
+void getargs(int *port, int *threads, int *buffers, char **schedalg, int argc, char *argv[])
 {
 	if (argc != 5 // Must have 5x arguments
 			|| (*threads = atoi(argv[2])) < 1 // Must have 1 or more threads
@@ -138,9 +138,9 @@ void *producer(void *portnum)
 	for (;;) 
 	{
 		pthread_mutex_lock(&m);
-		while (numitems == buffers){
+		// while (numitems == buffers){
+		while (numitems == 1){
 			pthread_cond_wait(&empty, &m);
-
 		}
 		clientlen = sizeof(clientaddr);
 		buffer[numitems].connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
@@ -148,6 +148,8 @@ void *producer(void *portnum)
 		// requestHandle(&buffer[numitems]);
 		// Close(buffer[numitems].connfd);
 		numitems++;
+		// printf("xxxxx numitems: %d\n", numitems);
+		// printf("Wake up!!!!!!\n");;
 		pthread_cond_signal(&fill);
 		pthread_mutex_unlock(&m);
 	}
@@ -164,6 +166,7 @@ void *consumer()
 		while (numitems == 0){
 			pthread_cond_wait(&fill, &m);
 		}
+		// printf("I AM AWAKE!!!!! MUAHAHA\n");
 		sortQueue();
 		// bufferDump();
 		// currBufferDump();
@@ -176,12 +179,11 @@ void *consumer()
 	}
 }
 
-
-
 int main(int argc, char *argv[])
 {
 	int port, threads, i;
 	getargs(&port, &threads, &buffers, &schedalg, argc, argv);
+	// printf("buffers: %d\n", buffers);
 	// printf("port:%d, threads:%d, buffers:%d, (did it work?) schedalg:%s \n", port, threads, buffers, schedalg);
 	buffer = (request_buffer *) malloc(buffers * sizeof(request_buffer));
 	pthread_t pid, cid[threads];
