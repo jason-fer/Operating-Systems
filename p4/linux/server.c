@@ -56,7 +56,12 @@ compareKeys(const void *r1, const void *r2)
   int parm1 = 0;
   int parm2 = 0;
 
-	if(strcmp("SFNF", schedalg) == 0)
+	if(strcmp("FIFO", schedalg) == 0)
+	{
+		parm1 = bf1->filesize;
+		parm2 = bf2->filesize;
+	} 
+	else if(strcmp("SFNF", schedalg) == 0)
 	{
 		// Smallest filename first.
 		parm1 = strlen(bf1->filename);
@@ -69,13 +74,28 @@ compareKeys(const void *r1, const void *r2)
 		parm2 = bf2->filesize;
 	}
 
+	// Reverse sorting order (-1 / 1 switched)
   if(parm1 > parm2) {
-    return 1;
-  } else if(parm1 < parm2) {
     return -1;
+  } else if(parm1 < parm2) {
+    return 1;
   }
 
   return 0;
+}
+
+void bufferDump()
+{
+	int i;
+	// Dump the buffer data
+	for (i = 0; i < buffers; i++)
+	{
+		printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
+		printf("buffer[%d].filesize %d\n", i, buffer[i].filesize);
+		printf("buffer[%d].filename %s\n", i, buffer[i].filename);
+		printf("buffer[numfull].filename %s\n", buffer[numfull].filename);
+	}
+	// exit(1);
 }
 
 /**
@@ -84,12 +104,10 @@ compareKeys(const void *r1, const void *r2)
 void
 sortQueue()
 {
-	if(strcmp("FIFO", schedalg) == 0)
-	{
-		// First in, first out. 
-		// There's nothing to do; (it's already in order)
-		return;
-	} 
+	// Policies:
+	// -First-in-First-out (FIFO)
+	// -Smallest Filename First (SFNF)
+	// -Smallest File First (SFF)
   qsort(buffer, numfull, sizeof(request_buffer), compareKeys);
 }
 
@@ -122,22 +140,11 @@ void *producer_fill(void *portnum)
 		queueRequest(&buffer[numfull]);
 		// requestHandle(&buffer[numfull]);
 		numfull++;
-		if(numfull == buffers){ sortQueue(); }
 		pthread_cond_signal(&fill);
 		pthread_mutex_unlock(&m);
 		// Close(connfd);
 	}
 }
-// 	// Dump the buffer data
-// 	if(numfull == buffers){
-// 		for (int i = 0; i < buffers; i++)
-// 		{
-// 			printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
-// 			printf("buffer[%d].filesize %d\n", i, buffer[i].filesize);
-// 			printf("buffer[%d].filename %s\n", i, buffer[i].filename);
-// 		}
-// 		exit(1);
-// 	}
 
 /**
  * Function for the consumers in the threadpool
@@ -146,21 +153,14 @@ void *consumer_empty()
 {
 	while (1) {
 		pthread_mutex_lock(&m);
+		// wait if buffer is empty
 		while (numfull == 0){
 			pthread_cond_wait(&fill, &m);
 		}
-		// // Dump the buffer data
-		// if(numfull == buffers){
-		// 	for (int i = 0; i < buffers; i++)
-		// 	{
-		// 		printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
-		// 		printf("buffer[%d].filesize %d\n", i, buffer[i].filesize);
-		// 		printf("buffer[%d].filename %s\n", i, buffer[i].filename);
-		// 		printf("buffer[numfull].filename %s\n", buffer[numfull].filename);
-		// 	}
-		// 	// exit(1);
-		// }
-		// Fulfill request
+		sortQueue();
+		// if(numfull == buffers) sortQueue(); //bufferDump();
+		// bufferDump();
+		// Fulfill requests from queue in order of scheduling policy
 		requestHandle(&buffer[numfull - 1]);
 		Close(buffer[numfull - 1].connfd);
 		// wipe out item in buffer ?
@@ -174,11 +174,7 @@ void *consumer_empty()
 
 int main(int argc, char *argv[])
 {
-	int port, threads;
-	// Policies:
-	// -First-in-First-out (FIFO)
-	// -Smallest Filename First (SFNF)
-	// -Smallest File First (SFF)
+	int port, threads, i;
 	/**
 	 *  master thread (producer): responsible for accepting new http connections 
 	 *  over the network and placing the descriptor for this connection into a 
@@ -189,46 +185,25 @@ int main(int argc, char *argv[])
 	// printf("port:%d, threads:%d, buffers:%d, (did it work?) schedalg:%s \n", port, threads, buffers, schedalg);
 	buffer = (request_buffer *) malloc(buffers * sizeof(request_buffer));
 
-	// Init the buffer
-	// for (int i = 0; i < buffers; i++)
-	// {
-	// 	buffer[i].filesize = 0;
-	// 	buffer[i].connfd = 0;
-	// }
-
 	pthread_t pid, cid[threads];
+
 	// Init the master (producer)
 	pthread_create(&pid, NULL, producer_fill, (void*) &port);
-	int i;
 	for (i = 0; i < threads; i++)
 	{
 		// Init the worker thread pool
 		// child threads (start w/ one for simplicity)
-		pthread_create(&cid[0], NULL, consumer_empty, NULL);
-		break;
+		pthread_create(&cid[i], NULL, consumer_empty, NULL);
 	}
 
-	/**
-	 * Create a fixed size pool of worker (consumer) threads.
-	 * -cond var: wait if buffer is empty
-	 * On Wake:
-	 * -pull requests from queue in order of scheduling policy
-	 * -read network descriptor, & run requestServeDynamic or 
-	 * requestServeStatic
-	 */
- 	// @stuff todo:
- 	// 1-make queueRequest more efficient (remove all the uncessary extra stuff
- 	// so we don't get strange problems when fulfilling requests -- i.e., just
- 	// get the filename & run fstat & update the buffer, nothing more)
- 	// 2-implement each scheduling algorithm to sort correctly (trigger a sort 
- 	// once the buffer is full, confirm sorting works as expected) -- use whatever
- 	// sorting algorithm I used in fastsort (P1)
- 	// 3-confirm things work with just 1 master thread & 1 worker thread
- 	// 4-create a pool of worker threads, confirm that things still work
- 	// 5-start running the tests
-
 	pthread_join(pid, NULL);
-	pthread_join(cid[0], NULL);
+	// Create a fixed size pool of worker (consumer) threads.
+	for (i = 0; i < threads; i++)
+	{
+		// Init the worker thread pool
+		// child threads (start w/ one for simplicity)
+		pthread_join(cid[i], NULL);
+	}
 
 	return 0;
 }

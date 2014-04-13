@@ -89,19 +89,36 @@ int main(int argc, char *argv[])
 	/* Open a single connection to the specified host and port */
 	// @todo: make this multi-threaded to more effectively test our server
 	// int i;
-	// for (i = 0; i < 5; ++i)
+	// char *foo = "x.html";
+	// for (i = 1; i <= 5; ++i)
 	// {
 	// 	clientfd = Open_clientfd(host, port);
 	// 	// Start several requests in a row & don't wait
-	// 	clientSend(clientfd, filename);
+	// 	// clientSend(clientfd, filename);
+	// 	foo[0] = (char) i;
+	// 	clientSend(clientfd, foo);
 	// 	// clientPrint(clientfd);
-			
 	// 	// Close(clientfd);
 	// }
+
 	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, filename);
-	clientPrint(clientfd);
-	Close(clientfd);
+	clientSend(clientfd, "/1.html");
+
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/2.html");
+
+		clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/3.html");
+
+		clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/4.html");
+
+		clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/5.html");
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, filename);
+	// clientPrint(clientfd);
+	// Close(clientfd);
 
 	exit(0);
 }
