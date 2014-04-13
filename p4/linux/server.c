@@ -146,7 +146,7 @@ void *producer(void *portnum)
 		buffer[numitems].connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
 		queueRequest(&buffer[numitems]);
 		// requestHandle(&buffer[numitems]);
-		// Close(connfd);
+		// Close(buffer[numitems].connfd);
 		numitems++;
 		pthread_cond_signal(&fill);
 		pthread_mutex_unlock(&m);
@@ -164,7 +164,7 @@ void *consumer()
 		while (numitems == 0){
 			pthread_cond_wait(&fill, &m);
 		}
-		// sortQueue();
+		sortQueue();
 		// bufferDump();
 		// currBufferDump();
 		// Fulfill requests from queue in order of scheduling policy
