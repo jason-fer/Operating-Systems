@@ -13,6 +13,49 @@ sys_fork(void)
 }
 
 int
+sys_clone(void)
+{
+  char* placeHolder;
+  void(*fcn)(void*);
+  int size = sizeof(fcn);
+  argptr(0, &placeHolder, size);
+
+  fcn = (void (*) (void *))(placeHolder);
+
+  argptr(1, &placeHolder, sizeof(void*));
+  void* arg = (void*)placeHolder;
+
+  if (argptr(2, &placeHolder, PGSIZE) < 0)
+    return -1;
+
+  void* stack = (void*)placeHolder;
+
+  return clone(fcn, arg, stack);
+}
+
+int
+sys_join(void)
+{
+  int placeHolder;
+  void** stack;
+
+  if (argint(0, &placeHolder) < 0)
+    return -1;
+
+  stack = (void**)(placeHolder);
+  /* int* addr = (uint*)stack; */
+  int stackVal;
+
+  if (fetchint(proc, placeHolder, &stackVal) < 0)
+    return -1;
+
+  if (stackVal%PGSIZE != 0)
+    return -1;
+
+  return join(stack);
+}
+
+int
 sys_exit(void)
 {
   exit();
