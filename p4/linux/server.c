@@ -12,8 +12,8 @@
  */
 char *schedalg = "Must be FIFO, SNFNF or SFF";
 request_buffer *buffer; // a list of connection file descriptors
-int buffers = 0; // max buffers
-int numfull = 0; // number of items currently in the buffer
+volatile int buffers = 0; // max buffers
+volatile int numfull = 0; // number of items currently in the buffer
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
 pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
@@ -29,7 +29,7 @@ pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
  * (threads & buffers must both be > 0)
  * @todo: parse the new arguments
  */
-void getargs(int *port, int *threads, int *buffers, char **schedalg, int argc, char *argv[])
+void getargs(int *port, int *threads, volatile int *buffers, char **schedalg, int argc, char *argv[])
 {
 	if (argc != 5 // Must have 5x arguments
 			|| (*threads = atoi(argv[2])) < 1 // Must have 1 or more threads
@@ -88,7 +88,7 @@ void bufferDump()
 {
 	int i;
 	// Dump the buffer data
-	for (i = 0; i < buffers; i++)
+	for (i = 0; i < numfull; i++)
 	{
 		printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
 		printf("buffer[%d].filesize %d\n", i, buffer[i].filesize);
@@ -125,7 +125,9 @@ void *producer_fill(void *portnum)
 
 	while (1) {
 		pthread_mutex_lock(&m);
+		// printf("PRODUCER HAVE LOCK\n");
 		while (numfull == buffers){
+			// printf("PRODUCER WAIT\n");
 			pthread_cond_wait(&empty, &m);
 
 		}
@@ -138,10 +140,11 @@ void *producer_fill(void *portnum)
 		// here (e.g., a stat() on the filename) ...
 		//
 		queueRequest(&buffer[numfull]);
-		// requestHandle(&buffer[numfull]);
 		numfull++;
 		pthread_cond_signal(&fill);
+		// printf("PRODUCER RELEASE LOCK\n");
 		pthread_mutex_unlock(&m);
+		// requestHandle(&buffer[numfull]);
 		// Close(connfd);
 	}
 }
@@ -153,21 +156,23 @@ void *consumer_empty()
 {
 	while (1) {
 		pthread_mutex_lock(&m);
+		// printf("CONSUMEr HAVE LOCK\n");
 		// wait if buffer is empty
 		while (numfull == 0){
+			// printf("CONSUMEr WAIT\n");
 			pthread_cond_wait(&fill, &m);
 		}
-		sortQueue();
-		// if(numfull == buffers) sortQueue(); //bufferDump();
+		sortQueue(); //bufferDump();
+		// if(numfull == buffers) sortQueue(); 
 		// bufferDump();
 		// Fulfill requests from queue in order of scheduling policy
 		requestHandle(&buffer[numfull - 1]);
 		Close(buffer[numfull - 1].connfd);
 		// wipe out item in buffer ?
-		// Make sure to decrement the number of requests in the queue so we don't
-		// fullfill the same request twice....
+		// Decrement the number of requests in the queue
 		numfull--;
 		pthread_cond_signal(&empty);
+		// printf("CONSUMEr RELEASE LOCK\n");
 		pthread_mutex_unlock(&m);
 	}
 }
@@ -186,7 +191,6 @@ int main(int argc, char *argv[])
 	buffer = (request_buffer *) malloc(buffers * sizeof(request_buffer));
 
 	pthread_t pid, cid[threads];
-
 	// Init the master (producer)
 	pthread_create(&pid, NULL, producer_fill, (void*) &port);
 	for (i = 0; i < threads; i++)
