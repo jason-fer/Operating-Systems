@@ -2,7 +2,7 @@
 #include "request.h"
 
 /**
- * server.c: A very, very simple web server
+ * server.c: A simple web server
  *
  * Repeatedly handles HTTP requests sent to the port number.
  * Most of the work is done within routines written in request.c
@@ -12,8 +12,8 @@
  */
 char *schedalg = "Must be FIFO, SNFNF or SFF";
 request_buffer *buffer; // a list of connection file descriptors
-volatile int buffers = 0; // max buffers
-volatile int numfull = 0; // number of items currently in the buffer
+int buffers = 0; // max buffers
+int numitems = 0; // number of items currently in the buffer
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
 pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
@@ -84,16 +84,25 @@ compareKeys(const void *r1, const void *r2)
   return 0;
 }
 
+void currBufferDump()
+{
+	int i = numitems - 1;
+	printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
+	printf("buffer[%d].filesize %d\n", i, buffer[i].filesize);
+	printf("buffer[%d].filename %s\n", i, buffer[i].filename);
+	printf("buffer[numitems].filename %s\n", buffer[i].filename);
+}
+
 void bufferDump()
 {
 	int i;
 	// Dump the buffer data
-	for (i = 0; i < numfull; i++)
+	for (i = 0; i < numitems; i++)
 	{
 		printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
 		printf("buffer[%d].filesize %d\n", i, buffer[i].filesize);
 		printf("buffer[%d].filename %s\n", i, buffer[i].filename);
-		printf("buffer[numfull].filename %s\n", buffer[numfull].filename);
+		printf("buffer[numitems].filename %s\n", buffer[numitems].filename);
 	}
 	// exit(1);
 }
@@ -108,104 +117,86 @@ sortQueue()
 	// -First-in-First-out (FIFO)
 	// -Smallest Filename First (SFNF)
 	// -Smallest File First (SFF)
-  qsort(buffer, numfull, sizeof(request_buffer), compareKeys);
+  qsort(buffer, numitems, sizeof(request_buffer), compareKeys);
 }
 
 /**
  * Fill the queue with HTTP requests. A function for the master (producer) 
  * thread. Requires a port number > 0
+ * master thread (producer): responsible for accepting new http connections 
+ *  over the network and placing the descriptor for this connection into a 
+ *  fixed-size buffer
+ *  -cond var: block & wait if buffer is full
  */
-void *producer_fill(void *portnum)
+void *producer(void *portnum)
 {
 	int *port = (int*) portnum;
 	// printf("(int) port: %d\n", *port);
 	int listenfd, clientlen;
 	listenfd = Open_listenfd(*port); // This opens a socket & listens on port #
 	struct sockaddr_in clientaddr;
-
-	while (1) {
+	for (;;) 
+	{
 		pthread_mutex_lock(&m);
-		// printf("PRODUCER HAVE LOCK\n");
-		while (numfull == buffers){
-			// printf("PRODUCER WAIT\n");
+		while (numitems == buffers){
 			pthread_cond_wait(&empty, &m);
 
 		}
 		clientlen = sizeof(clientaddr);
-		buffer[numfull].connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
-		// 
-		// CS537: In general, don't handle the request in the main thread.
-		// Save the relevant info in a buffer and have one of the worker threads 
-		// do the work. However, for SFF, you may have to do a little work
-		// here (e.g., a stat() on the filename) ...
-		//
-		queueRequest(&buffer[numfull]);
-		numfull++;
-		pthread_cond_signal(&fill);
-		// printf("PRODUCER RELEASE LOCK\n");
-		pthread_mutex_unlock(&m);
-		// requestHandle(&buffer[numfull]);
+		buffer[numitems].connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+		queueRequest(&buffer[numitems]);
+		// requestHandle(&buffer[numitems]);
 		// Close(connfd);
+		numitems++;
+		pthread_cond_signal(&fill);
+		pthread_mutex_unlock(&m);
 	}
 }
 
 /**
  * Function for the consumers in the threadpool
  */
-void *consumer_empty()
+void *consumer()
 {
-	while (1) {
+	for (;;) 
+	{
 		pthread_mutex_lock(&m);
-		// printf("CONSUMEr HAVE LOCK\n");
-		// wait if buffer is empty
-		while (numfull == 0){
-			// printf("CONSUMEr WAIT\n");
+		while (numitems == 0){
 			pthread_cond_wait(&fill, &m);
 		}
-		sortQueue(); //bufferDump();
-		// if(numfull == buffers) sortQueue(); 
+		// sortQueue();
 		// bufferDump();
+		// currBufferDump();
 		// Fulfill requests from queue in order of scheduling policy
-		requestHandle(&buffer[numfull - 1]);
-		Close(buffer[numfull - 1].connfd);
-		// wipe out item in buffer ?
-		// Decrement the number of requests in the queue
-		numfull--;
+		requestHandle(&buffer[numitems - 1]);
+		Close(buffer[numitems - 1].connfd);
+		numitems--;
 		pthread_cond_signal(&empty);
-		// printf("CONSUMEr RELEASE LOCK\n");
 		pthread_mutex_unlock(&m);
 	}
 }
 
+
+
 int main(int argc, char *argv[])
 {
 	int port, threads, i;
-	/**
-	 *  master thread (producer): responsible for accepting new http connections 
-	 *  over the network and placing the descriptor for this connection into a 
-	 *  fixed-size buffer
-	 *  -cond var: block & wait if buffer is full
-	 */
 	getargs(&port, &threads, &buffers, &schedalg, argc, argv);
 	// printf("port:%d, threads:%d, buffers:%d, (did it work?) schedalg:%s \n", port, threads, buffers, schedalg);
 	buffer = (request_buffer *) malloc(buffers * sizeof(request_buffer));
-
 	pthread_t pid, cid[threads];
-	// Init the master (producer)
-	pthread_create(&pid, NULL, producer_fill, (void*) &port);
+
+	// Init producer
+	pthread_create(&pid, NULL, producer, (void*) &port);
+	// Create fixed size pool of consumer threads.
 	for (i = 0; i < threads; i++)
 	{
-		// Init the worker thread pool
-		// child threads (start w/ one for simplicity)
-		pthread_create(&cid[i], NULL, consumer_empty, NULL);
+		pthread_create(&cid[i], NULL, consumer, NULL);
 	}
 
 	pthread_join(pid, NULL);
-	// Create a fixed size pool of worker (consumer) threads.
 	for (i = 0; i < threads; i++)
 	{
-		// Init the worker thread pool
-		// child threads (start w/ one for simplicity)
 		pthread_join(cid[i], NULL);
 	}
 

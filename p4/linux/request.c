@@ -156,11 +156,8 @@ void queueRequest(request_buffer *buffer)
 	Rio_readlineb(&buffer->rio, buffer->buf, MAXLINE);
 	sscanf(buffer->buf, "%s %s %s", buffer->method, buffer->uri, buffer->version);
 	buffer->is_static = requestParseURI(buffer->uri, buffer->filename, buffer->cgiargs);
-
 	stat(buffer->filename, &buffer->sbuf);
 	buffer->filesize = (int) buffer->sbuf.st_size;
-	// printf("buffer filename: %s\n", buffer->filename);
-	// printf("size: %d\n", buffer->filesize);
 }
 
 // handle a request
