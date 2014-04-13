@@ -190,16 +190,17 @@ int main(int argc, char *argv[])
 	buffer = (request_buffer *) malloc(buffers * sizeof(request_buffer));
 
 	// Init the buffer
-	for (int i = 0; i < buffers; i++)
-	{
-		buffer[i].filesize = 0;
-		buffer[i].connfd = 0;
-	}
+	// for (int i = 0; i < buffers; i++)
+	// {
+	// 	buffer[i].filesize = 0;
+	// 	buffer[i].connfd = 0;
+	// }
 
 	pthread_t pid, cid[threads];
 	// Init the master (producer)
 	pthread_create(&pid, NULL, producer_fill, (void*) &port);
-	for (int i = 0; i < threads; i++)
+	int i;
+	for (i = 0; i < threads; i++)
 	{
 		// Init the worker thread pool
 		// child threads (start w/ one for simplicity)
@@ -228,4 +229,6 @@ int main(int argc, char *argv[])
 
 	pthread_join(pid, NULL);
 	pthread_join(cid[0], NULL);
+
+	return 0;
 }
