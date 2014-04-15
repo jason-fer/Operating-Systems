@@ -23,7 +23,10 @@ USER_PROGS := \
 	join2\
 	join4\
 	badclone\
-	stack
+	stack\
+	thread\
+	thread2\
+	multi
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
 
