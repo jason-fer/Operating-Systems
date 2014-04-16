@@ -56,14 +56,9 @@ compareKeys(const void *r1, const void *r2)
   int parm1 = 0;
   int parm2 = 0;
 
-	if(strcmp("FIFO", schedalg) == 0)
+	if(strcmp("SFNF", schedalg) == 0)
 	{
-		parm1 = bf1->filesize;
-		parm2 = bf2->filesize;
-	} 
-	else if(strcmp("SFNF", schedalg) == 0)
-	{
-		// Smallest filename first. (reversed parms intentional!)
+		// Intentionally reversed paramters for SFNF
 		parm2 = strlen(bf1->filename);
 		parm1 = strlen(bf2->filename);
 	} 
@@ -117,6 +112,7 @@ sortQueue()
 	// -First-in-First-out (FIFO)
 	// -Smallest Filename First (SFNF)
 	// -Smallest File First (SFF)
+	if(strcmp("FIFO", schedalg) == 0) return;
   qsort(buffer, numitems, sizeof(request_buffer), compareKeys);
 }
 
@@ -152,7 +148,6 @@ void *producer(void *portnum)
 		queueRequest(&buffer[numitems]);
 		// requestHandle(&buffer[numitems]);
 		// Close(buffer[numitems].connfd);
-		sortQueue();
 		numitems++;
 		// printf("xxxxx numitems: %d\n", numitems);
 		// printf("Wake up!!!!!!\n");;
@@ -174,6 +169,7 @@ void *consumer()
 		while (numitems == 0){
 			pthread_cond_wait(&fill, &m);
 		}
+		sortQueue();
 		// Store data in temp struct (while locked)
 		tmp_buf->filesize = buffer[numitems - 1].filesize;
 		tmp_buf->connfd = buffer[numitems - 1].connfd;
@@ -186,6 +182,7 @@ void *consumer()
 		strcpy(tmp_buf->cgiargs, buffer[numitems - 1].cgiargs);
 		tmp_buf->sbuf = buffer[numitems - 1].sbuf;
 		tmp_buf->rio = buffer[numitems - 1].rio;
+
 		numitems--;
 		// Let go of lock as quickly as possible...
 		pthread_cond_signal(&empty);
