@@ -163,7 +163,7 @@ void queueRequest(request_buffer *buffer)
 // handle a request
 void requestHandle(request_buffer *buffer)
 {
-	printf("%s %s %s\n", buffer->method, buffer->uri, buffer->version);
+	// printf("%s %s %s\n", buffer->method, buffer->uri, buffer->version);
 
 	if (strcasecmp(buffer->method, "GET")) {
 		// Dump the buffer data

@@ -63,9 +63,9 @@ compareKeys(const void *r1, const void *r2)
 	} 
 	else if(strcmp("SFNF", schedalg) == 0)
 	{
-		// Smallest filename first.
-		parm1 = strlen(bf1->filename);
-		parm2 = strlen(bf2->filename);
+		// Smallest filename first. (reversed parms intentional!)
+		parm2 = strlen(bf1->filename);
+		parm1 = strlen(bf2->filename);
 	} 
 	else if(strcmp("SFF", schedalg) == 0)
 	{
@@ -132,21 +132,27 @@ void *producer(void *portnum)
 {
 	int *port = (int*) portnum;
 	// printf("(int) port: %d\n", *port);
-	int listenfd, clientlen;
+	int listenfd, clientlen, connfd;
 	listenfd = Open_listenfd(*port); // This opens a socket & listens on port #
 	struct sockaddr_in clientaddr;
+
 	for (;;) 
 	{
+		
+		// Hold locks for the shortest time possible.
+		clientlen = sizeof(clientaddr);
+		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen); // This blocks; must be outside mutex
+
 		pthread_mutex_lock(&m);
-		// while (numitems == buffers){
-		while (numitems == 1){
+		while (numitems == buffers){
 			pthread_cond_wait(&empty, &m);
 		}
-		clientlen = sizeof(clientaddr);
-		buffer[numitems].connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+
+		buffer[numitems].connfd = connfd;
 		queueRequest(&buffer[numitems]);
 		// requestHandle(&buffer[numitems]);
 		// Close(buffer[numitems].connfd);
+		sortQueue();
 		numitems++;
 		// printf("xxxxx numitems: %d\n", numitems);
 		// printf("Wake up!!!!!!\n");;
@@ -160,22 +166,36 @@ void *producer(void *portnum)
  */
 void *consumer()
 {
+	request_buffer *tmp_buf  = (request_buffer *) malloc(buffers * sizeof(request_buffer));
+
 	for (;;) 
 	{
 		pthread_mutex_lock(&m);
 		while (numitems == 0){
 			pthread_cond_wait(&fill, &m);
 		}
-		// printf("I AM AWAKE!!!!! MUAHAHA\n");
-		sortQueue();
-		// bufferDump();
-		// currBufferDump();
-		// Fulfill requests from queue in order of scheduling policy
-		requestHandle(&buffer[numitems - 1]);
-		Close(buffer[numitems - 1].connfd);
+		// Store data in temp struct (while locked)
+		tmp_buf->filesize = buffer[numitems - 1].filesize;
+		tmp_buf->connfd = buffer[numitems - 1].connfd;
+		tmp_buf->is_static = buffer[numitems - 1].is_static;
+		strcpy(tmp_buf->buf, buffer[numitems - 1].buf);
+		strcpy(tmp_buf->method, buffer[numitems - 1].method);
+		strcpy(tmp_buf->uri, buffer[numitems - 1].uri);
+		strcpy(tmp_buf->version, buffer[numitems - 1].version);
+		strcpy(tmp_buf->filename, buffer[numitems - 1].filename);
+		strcpy(tmp_buf->cgiargs, buffer[numitems - 1].cgiargs);
+		tmp_buf->sbuf = buffer[numitems - 1].sbuf;
+		tmp_buf->rio = buffer[numitems - 1].rio;
 		numitems--;
+		// Let go of lock as quickly as possible...
 		pthread_cond_signal(&empty);
 		pthread_mutex_unlock(&m);
+		
+		// bufferDump();
+		// currBufferDump();
+		requestHandle(tmp_buf); 
+		Close(tmp_buf->connfd);
+
 	}
 }
 
@@ -183,7 +203,6 @@ int main(int argc, char *argv[])
 {
 	int port, threads, i;
 	getargs(&port, &threads, &buffers, &schedalg, argc, argv);
-	// printf("buffers: %d\n", buffers);
 	// printf("port:%d, threads:%d, buffers:%d, (did it work?) schedalg:%s \n", port, threads, buffers, schedalg);
 	buffer = (request_buffer *) malloc(buffers * sizeof(request_buffer));
 	pthread_t pid, cid[threads];
