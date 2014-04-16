@@ -347,19 +347,19 @@ join(void** stack)
 
       havekids = 1;
 
-      cprintf("Found proc= %p child= %p\n", proc, p);
-      cprintf("Found proc pid = %d child pid = %d\n", proc->pid , p->pid);
-      cprintf("ebp: %p\n", p->tf->ebp);
-      cprintf("esp: %p\n", p->tf->esp);
-      cprintf("parent ebp: %p\n", p->parent->tf->ebp);
-      cprintf("parent esp: %p\n", p->parent->tf->esp);
+      /* cprintf("Found proc= %p child= %p\n", proc, p); */
+      /* cprintf("Found proc pid = %d child pid = %d\n", proc->pid , p->pid); */
+      /* cprintf("ebp: %p\n", p->tf->ebp); */
+      /* cprintf("esp: %p\n", p->tf->esp); */
+      /* cprintf("parent ebp: %p\n", p->parent->tf->ebp); */
+      /* cprintf("parent esp: %p\n", p->parent->tf->esp); */
 
       if(p->state == ZOMBIE) {
         // Found one.
         uint ebp = *(uint*)(p->tf->ebp);
         *stack = (void*)(ebp-PGSIZE+8);
-        cprintf("Stack: %p\n", stack);
-        cprintf("value at Stack: %p\n", *(uint**)stack);
+        /* cprintf("Stack: %p\n", stack); */
+        /* cprintf("value at Stack: %p\n", *(uint**)stack); */
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;

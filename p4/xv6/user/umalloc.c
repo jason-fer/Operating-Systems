@@ -2,7 +2,11 @@
 #include "stat.h"
 #include "user.h"
 #include "param.h"
+#include "x86.h"
 
+#define PGSIZE (4096)
+lock_t threadLock = 0;
+ 
 // Memory allocator by Kernighan and Ritchie,
 // The C programming Language, 2nd ed.  Section 8.7.
 
@@ -87,4 +91,54 @@ malloc(uint nbytes)
       if((p = morecore(nunits)) == 0)
         return 0;
   }
+}
+
+
+int
+thread_create(void(*start_routine)(void*), void* arg)
+{
+  /* lock_acquire(&threadLock); */
+  void* stack = malloc(PGSIZE*2);
+  if (stack == NULL) {
+    if (sbrk(10*PGSIZE) > 0) {
+      stack = malloc(PGSIZE);
+    } else {
+      exit();
+    }
+  }
+
+  if((uint)stack % PGSIZE)
+    stack = stack + (4096 - (uint)stack % PGSIZE);
+
+
+  int tPid = clone(start_routine, arg, stack);
+  /* printf (1,"%s\n",); */
+  /* lock_release(&threadLock); */
+  return tPid;
+}
+
+
+int
+thread_join() 
+{
+  void* join_stack;
+  int ppid = join(&join_stack);
+  free(join_stack);
+  return ppid;
+}
+
+void
+lock_acquire(lock_t* lock) {
+  while (xchg(lock, 1) == 1)
+    ; // spin
+}
+
+void
+lock_release(lock_t* lock) {
+  xchg(lock, 0);
+}
+
+void
+lock_init(lock_t* lock) {
+  *lock = 0;
 }
