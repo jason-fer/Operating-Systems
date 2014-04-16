@@ -101,9 +101,9 @@ int main(int argc, char *argv[])
 	// 	// Close(clientfd);
 	// }
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/1.html");
-	Close(clientfd);
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/1.html");
+	// Close(clientfd);
 
 	// clientfd = Open_clientfd(host, port);
 	// clientSend(clientfd, "/2.html");
@@ -141,10 +141,10 @@ int main(int argc, char *argv[])
 	// clientSend(clientfd, "/2.cgi?50");
 	// Close(clientfd);
 
-	// clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, filename);
-	// clientPrint(clientfd);
-	// Close(clientfd);
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, filename);
+	clientPrint(clientfd);
+	Close(clientfd);
 
 	exit(0);
 }

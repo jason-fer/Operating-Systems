@@ -14,6 +14,7 @@ char *schedalg = "Must be FIFO, SNFNF or SFF";
 request_buffer *buffer; // a list of connection file descriptors
 int buffers = 0; // max buffers
 int numitems = 0; // number of items currently in the buffer
+int needsort = 0;
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
 pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
@@ -58,13 +59,11 @@ compareKeys(const void *r1, const void *r2)
 
 	if(strcmp("SFNF", schedalg) == 0)
 	{
-		// Intentionally reversed paramters for SFNF
-		parm2 = strlen(bf1->filename);
+		parm1 = strlen(bf1->filename);
 		parm1 = strlen(bf2->filename);
 	} 
 	else if(strcmp("SFF", schedalg) == 0)
 	{
-		// Smallest file first
 		parm1 = bf1->filesize;
 		parm2 = bf2->filesize;
 	}
@@ -149,6 +148,7 @@ void *producer(void *portnum)
 		// requestHandle(&buffer[numitems]);
 		// Close(buffer[numitems].connfd);
 		numitems++;
+		needsort = 1;
 		// printf("xxxxx numitems: %d\n", numitems);
 		// printf("Wake up!!!!!!\n");;
 		pthread_cond_signal(&fill);
@@ -169,7 +169,7 @@ void *consumer()
 		while (numitems == 0){
 			pthread_cond_wait(&fill, &m);
 		}
-		sortQueue();
+		if(needsort) sortQueue(); needsort = 0;
 		// Store data in temp struct (while locked)
 		tmp_buf->filesize = buffer[numitems - 1].filesize;
 		tmp_buf->connfd = buffer[numitems - 1].connfd;
@@ -182,7 +182,6 @@ void *consumer()
 		strcpy(tmp_buf->cgiargs, buffer[numitems - 1].cgiargs);
 		tmp_buf->sbuf = buffer[numitems - 1].sbuf;
 		tmp_buf->rio = buffer[numitems - 1].rio;
-
 		numitems--;
 		// Let go of lock as quickly as possible...
 		pthread_cond_signal(&empty);
