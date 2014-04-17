@@ -12,12 +12,43 @@
  */
 char *schedalg = "Must be FIFO, SNFNF or SFF";
 request_buffer *buffer; // a list of connection file descriptors
-int buffers = 0; // max buffers
-int numitems = 0; // number of items currently in the buffer
-int needsort = 0;
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
 pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
+int FIFO = 0;
+// Simple Queue (buffers ==  max buffers / items)
+int buffers = 0; // max buffers
+int numitems = 0; // number of items currently in the buffer
+int frontIndex = 0;
+int rearIndex = -1;
+
+// Start Pseudo-Queue functions: -->
+int incrementIndex(int index){
+	// Length = number of components in the array
+	if (index == buffers - 1){ // was items.length
+		return 0;
+	} else {
+		return index + 1;
+	}
+}
+
+// Returns index to add the item
+int enqueueIndex() {
+	rearIndex = incrementIndex(rearIndex);
+	numitems++;
+	return rearIndex;
+}
+
+// Return indexto retrieve the item
+int dequeueIndex() {
+	int index;
+	if(numitems == 0) return -1; // This should never happen
+	index = frontIndex;
+	frontIndex = incrementIndex(frontIndex);
+	numitems--;
+	return index;
+}
+// <--End Pseudo-Queue functions
 
 /**
  * Usage: 
@@ -46,11 +77,12 @@ void getargs(int *port, int *threads, int *buffers, char **schedalg, int argc, c
 		exit(1);
 	}
 
+	if(strcmp("FIFO", *schedalg) == 0) FIFO = 1;
+
 	*port = atoi(argv[1]);
 }
 
-int 
-compareKeys(const void *r1, const void *r2)
+int compareKeys(const void *r1, const void *r2)
 {
   request_buffer *bf1 = (request_buffer*) r1;
   request_buffer *bf2 = (request_buffer*) r2;
@@ -59,8 +91,9 @@ compareKeys(const void *r1, const void *r2)
 
 	if(strcmp("SFNF", schedalg) == 0)
 	{
+		// Why does reversing parameters help?
 		parm1 = strlen(bf1->filename);
-		parm1 = strlen(bf2->filename);
+		parm2 = strlen(bf2->filename);
 	} 
 	else if(strcmp("SFF", schedalg) == 0)
 	{
@@ -101,18 +134,23 @@ void bufferDump()
 	// exit(1);
 }
 
+int valid_fd(int fd)
+{
+	return fcntl(fd, F_GETFD) != -1 || errno != EBADF;
+}
+
 /**
  * Sort the contents of the buffer
  */
-void
-sortQueue()
+void sortQueue()
 {
 	// Policies:
 	// -First-in-First-out (FIFO)
 	// -Smallest Filename First (SFNF)
 	// -Smallest File First (SFF)
-	if(strcmp("FIFO", schedalg) == 0) return;
+	if(FIFO) return;
   qsort(buffer, numitems, sizeof(request_buffer), compareKeys);
+  // bufferDump();
 }
 
 /**
@@ -126,31 +164,38 @@ sortQueue()
 void *producer(void *portnum)
 {
 	int *port = (int*) portnum;
-	// printf("(int) port: %d\n", *port);
 	int listenfd, clientlen, connfd;
-	listenfd = Open_listenfd(*port); // This opens a socket & listens on port #
+	listenfd = Open_listenfd(*port);
 	struct sockaddr_in clientaddr;
+	int index;
 
 	for (;;) 
 	{
-		
 		// Hold locks for the shortest time possible.
 		clientlen = sizeof(clientaddr);
-		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen); // This blocks; must be outside mutex
+		// This blocks; must be outside mutex
+		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+		// No point hanging on to this connection if it's broken
+		if(connfd <= 0 || !valid_fd(connfd)) continue;
 
 		pthread_mutex_lock(&m);
 		while (numitems == buffers){
 			pthread_cond_wait(&empty, &m);
 		}
 
-		buffer[numitems].connfd = connfd;
-		queueRequest(&buffer[numitems]);
-		// requestHandle(&buffer[numitems]);
-		// Close(buffer[numitems].connfd);
-		numitems++;
-		needsort = 1;
-		// printf("xxxxx numitems: %d\n", numitems);
-		// printf("Wake up!!!!!!\n");;
+		if(FIFO && buffers > 1){
+			// Increment numitems & get the right index for a circular array
+			index = enqueueIndex();
+		} else {
+			// This must be SFF or SFNF, which both need to be sorted.
+			index = numitems;
+			numitems++;
+		}
+		buffer[index].connfd = connfd;
+		queueRequest(&buffer[index]);
+		// There's no point sorting unless we have at least two items
+		if(numitems > 1) sortQueue();
+		// if(numitems == 8) sortQueue();
 		pthread_cond_signal(&fill);
 		pthread_mutex_unlock(&m);
 	}
@@ -161,6 +206,7 @@ void *producer(void *portnum)
  */
 void *consumer()
 {
+	int index;
 	request_buffer *tmp_buf  = (request_buffer *) malloc(buffers * sizeof(request_buffer));
 
 	for (;;) 
@@ -170,31 +216,38 @@ void *consumer()
 			pthread_cond_wait(&fill, &m);
 		}
 
-		// printf("thread id: %d\n", (int)  pthread_self() );
-
-		if(needsort) sortQueue(); needsort = 0;
+		if(FIFO && buffers > 1){
+			// FIFO uses a circular array
+			// Decrement numitems & get the right index
+			index = dequeueIndex();
+		} else {
+			// Make manual adjustments for SFNF, or SFF
+			index = numitems - 1;
+			numitems--;
+		}
 		// Store data in temp struct (while locked)
-		tmp_buf->filesize = buffer[numitems - 1].filesize;
-		tmp_buf->connfd = buffer[numitems - 1].connfd;
-		tmp_buf->is_static = buffer[numitems - 1].is_static;
-		strcpy(tmp_buf->buf, buffer[numitems - 1].buf);
-		strcpy(tmp_buf->method, buffer[numitems - 1].method);
-		strcpy(tmp_buf->uri, buffer[numitems - 1].uri);
-		strcpy(tmp_buf->version, buffer[numitems - 1].version);
-		strcpy(tmp_buf->filename, buffer[numitems - 1].filename);
-		strcpy(tmp_buf->cgiargs, buffer[numitems - 1].cgiargs);
-		tmp_buf->sbuf = buffer[numitems - 1].sbuf;
-		tmp_buf->rio = buffer[numitems - 1].rio;
-		numitems--;
+		tmp_buf->filesize = buffer[index].filesize;
+		tmp_buf->connfd = buffer[index].connfd;
+		tmp_buf->is_static = buffer[index].is_static;
+		strcpy(tmp_buf->buf, buffer[index].buf);
+		strcpy(tmp_buf->method, buffer[index].method);
+		strcpy(tmp_buf->uri, buffer[index].uri);
+		strcpy(tmp_buf->version, buffer[index].version);
+		strcpy(tmp_buf->filename, buffer[index].filename);
+		strcpy(tmp_buf->cgiargs, buffer[index].cgiargs);
+		tmp_buf->sbuf = buffer[index].sbuf;
+		tmp_buf->rio = buffer[index].rio;
+
 		// Let go of lock as quickly as possible...
 		pthread_cond_signal(&empty);
 		pthread_mutex_unlock(&m);
-		
-		// bufferDump();
-		// currBufferDump();
+
+		// Throw this buffer item away if it's broken
+		if(!valid_fd(tmp_buf->connfd)) continue;
+
+		// NOTE!!! the server crashes if the file is empty!!!!!!! (mmap error)
 		requestHandle(tmp_buf); 
 		Close(tmp_buf->connfd);
-
 	}
 }
 
@@ -202,6 +255,7 @@ int main(int argc, char *argv[])
 {
 	int port, threads, i;
 	getargs(&port, &threads, &buffers, &schedalg, argc, argv);
+
 	// printf("port:%d, threads:%d, buffers:%d, (did it work?) schedalg:%s \n", port, threads, buffers, schedalg);
 	buffer = (request_buffer *) malloc(buffers * sizeof(request_buffer));
 	pthread_t pid, cid[threads];

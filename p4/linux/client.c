@@ -97,19 +97,47 @@ int main(int argc, char *argv[])
 	host = argv[1];
 	port = atoi(argv[2]);
 	filename = argv[3];
+	int clientfd;
 
-	// Build a threadpool to siege our server.
-	int clients = 40;
-	pthread_t cid[clients];
-	int i;
-	for (i = 0; i < clients; i++)
-	{
-		pthread_create(&cid[i], NULL, stress_test, NULL);
-	}
-	for (i = 0; i < clients; i++)
-	{
-		pthread_join(cid[i], NULL);
-	}
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/abcd.html");
+
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/");
+
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/a.html");
+	
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/boo.html");
+
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/1_.html");
+
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/abc.html");
+
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/ab.html");
+
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/1__.html");
+
+	// clientPrint(clientfd);
+	// Close(clientfd);
+
+	// // Build a threadpool to siege our server.
+	// int clients = 40;
+	// pthread_t cid[clients];
+	// int i;
+	// for (i = 0; i < clients; i++)
+	// {
+	// 	pthread_create(&cid[i], NULL, stress_test, NULL);
+	// }
+	// for (i = 0; i < clients; i++)
+	// {
+	// 	pthread_join(cid[i], NULL);
+	// }
 
 	return 0;
 }

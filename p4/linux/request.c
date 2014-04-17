@@ -143,7 +143,6 @@ void requestServeStatic(int fd, char *filename, int filesize)
 	//  Writes out to the client socket the memory-mapped file 
 	Rio_writen(fd, srcp, filesize);
 	Munmap(srcp, filesize);
-
 }
 
 /**
@@ -158,6 +157,7 @@ void queueRequest(request_buffer *buffer)
 	buffer->is_static = requestParseURI(buffer->uri, buffer->filename, buffer->cgiargs);
 	stat(buffer->filename, &buffer->sbuf);
 	buffer->filesize = (int) buffer->sbuf.st_size;
+	// printf("buffer->filename: %s\n", buffer->filename);
 }
 
 // handle a request
@@ -176,6 +176,8 @@ void requestHandle(request_buffer *buffer)
 	}
 	requestReadhdrs(&buffer->rio);
 
+	// strncmp(buffer->filename,"./",2) == 0 <--problem with this is it would block directory access.
+	// access(buffer->filename, F_OK) == -1
 	if (stat(buffer->filename, &buffer->sbuf) < 0) {
 		requestError(buffer->connfd, buffer->filename, "404", "Not found", "CS537 Server could not find this file");
 		return;
