@@ -75,3 +75,5 @@ runtests.log
 /p4/linux/server
 
 /p4/linux/output.cgi.dSYM/Contents/Resources/DWARF/output.cgi
+
+/p4/linux/boo.html

@@ -44,7 +44,7 @@ void getargs(int *port, int *threads, int *buffers, char **schedalg, int argc, c
 		// prompt> server [portnum] [threads] [buffers] [schedalg]
 		fprintf(stderr, "Usage: %s <portnum> <threads> <buffers> <schedalg>\n", argv[0]);
 		exit(1);
-	} 
+	}
 
 	*port = atoi(argv[1]);
 }
@@ -169,6 +169,9 @@ void *consumer()
 		while (numitems == 0){
 			pthread_cond_wait(&fill, &m);
 		}
+
+		// printf("thread id: %d\n", (int)  pthread_self() );
+
 		if(needsort) sortQueue(); needsort = 0;
 		// Store data in temp struct (while locked)
 		tmp_buf->filesize = buffer[numitems - 1].filesize;
