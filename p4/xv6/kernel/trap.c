@@ -44,6 +44,7 @@ trap(struct trapframe *tf)
     return;
   }
 
+
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpu->id == 0){
@@ -83,6 +84,15 @@ trap(struct trapframe *tf)
               tf->trapno, cpu->id, tf->eip, rcr2());
       panic("trap");
     }
+
+
+    if (proc->parent != NULL && proc->pgdir == proc->parent->pgdir) {
+      /* cprintf("proc->pid = %d\n", proc->pid); */
+      /* cprintf("proc->Parent->pid = %d\n", proc->parent->pid); */
+      exit();
+      return;
+    }
+
     // In user space, assume process misbehaved.
     cprintf("pid %d %s: trap %d err %d on cpu %d "
             "eip 0x%x addr 0x%x--kill proc\n",

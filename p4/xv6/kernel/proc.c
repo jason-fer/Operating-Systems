@@ -278,7 +278,7 @@ exit(void)
         if(p->state == ZOMBIE)
           wakeup1(initproc);
       }
-    }
+    } 
   }
 
   // Jump into the scheduler, never to return.
@@ -330,7 +330,6 @@ wait(void)
   }
 }
 
-
 int
 join(void** stack)
 {
@@ -347,23 +346,17 @@ join(void** stack)
 
       havekids = 1;
 
-      /* cprintf("Found proc= %p child= %p\n", proc, p); */
-      /* cprintf("Found proc pid = %d child pid = %d\n", proc->pid , p->pid); */
-      /* cprintf("ebp: %p\n", p->tf->ebp); */
-      /* cprintf("esp: %p\n", p->tf->esp); */
-      /* cprintf("parent ebp: %p\n", p->parent->tf->ebp); */
-      /* cprintf("parent esp: %p\n", p->parent->tf->esp); */
-
       if(p->state == ZOMBIE) {
         // Found one.
         uint ebp = *(uint*)(p->tf->ebp);
-        *stack = (void*)(ebp-PGSIZE+8);
-        /* cprintf("Stack: %p\n", stack); */
-        /* cprintf("value at Stack: %p\n", *(uint**)stack); */
+        if (ebp+PGSIZE < PGSIZE) {
+          *stack = NULL;
+        } else {
+          *stack = (void*)(ebp-PGSIZE+8);
+        }
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
-        /* freevm(p->pgdir); */
         p->state = UNUSED;
         p->pid = 0;
         p->parent = 0;
@@ -521,6 +514,48 @@ wakeup(void *chan)
 {
   acquire(&ptable.lock);
   wakeup1(chan);
+  release(&ptable.lock);
+}
+
+void
+wakeup_thread(cond_t* cv)
+{
+  struct proc *p;
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    if(p->state == SLEEPING    &&
+       p->pgdir == proc->pgdir &&
+       p->chan  == cv)
+      p->state = RUNNABLE;
+  
+  release(&ptable.lock);
+}
+
+void
+sleep_thread(cond_t* cv)
+{
+  if(proc == 0)
+    panic("sleep");
+
+  // Must acquire ptable.lock in order to
+  // change p->state and then call sched.
+  // Once we hold ptable.lock, we can be
+  // guaranteed that we won't miss any wakeup
+  // (wakeup runs with ptable.lock locked),
+  // so it's okay to release lk.
+  acquire(&ptable.lock);  //DOC: sleeplock1
+
+  // Go to sleep.
+  proc->chan = cv;
+  proc->state = SLEEPING;
+  sched();
+
+  // Tidy up.
+  proc->chan = 0;
+
+  // Reacquire original lock.
   release(&ptable.lock);
 }
 

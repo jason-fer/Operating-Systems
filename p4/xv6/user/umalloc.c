@@ -25,6 +25,9 @@ typedef union header Header;
 static Header base;
 static Header *freep;
 
+extern void sleep_thread(cond_t*);
+extern void wakeup_thread(cond_t*);
+
 void
 free(void *ap)
 {
@@ -109,36 +112,56 @@ thread_create(void(*start_routine)(void*), void* arg)
 
   if((uint)stack % PGSIZE)
     stack = stack + (4096 - (uint)stack % PGSIZE);
-
+  /* lock_release(&threadLock); */
 
   int tPid = clone(start_routine, arg, stack);
   /* printf (1,"%s\n",); */
-  /* lock_release(&threadLock); */
   return tPid;
 }
-
 
 int
 thread_join() 
 {
   void* join_stack;
+  /* lock_acquire(&threadLock); */
+
   int ppid = join(&join_stack);
-  free(join_stack);
+  /* lock_release(&threadLock); */
+  if (join_stack) {
+    free(join_stack);
+  }
   return ppid;
 }
 
 void
-lock_acquire(lock_t* lock) {
+lock_acquire(lock_t* lock) 
+{
   while (xchg(lock, 1) == 1)
     ; // spin
 }
 
 void
-lock_release(lock_t* lock) {
+lock_release(lock_t* lock) 
+{
   xchg(lock, 0);
 }
 
 void
-lock_init(lock_t* lock) {
+lock_init(lock_t* lock) 
+{
   *lock = 0;
+}
+
+void
+cv_wait(cond_t* cv, lock_t* lock)
+{
+  lock_acquire(lock);
+  sleep_thread(cv);
+  lock_release(lock);
+}
+
+void
+cv_signal(cond_t* cv)
+{
+  wakeup_thread(cv);
 }

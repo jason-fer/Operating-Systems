@@ -111,6 +111,8 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+void            wakeup_thread(cond_t*);
+void            sleep_thread(cond_t*);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
