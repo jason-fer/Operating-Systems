@@ -149,7 +149,7 @@ void requestServeStatic(int fd, char *filename, int filesize)
  * Fill out the buffer data; we can only read from the socket once, so dump 
  * everything into the buffer.
  */
-void queueRequest(request_buffer *buffer)
+void prepRequest(request_buffer *buffer)
 {
 	Rio_readinitb(&buffer->rio, buffer->connfd);
 	Rio_readlineb(&buffer->rio, buffer->buf, MAXLINE);

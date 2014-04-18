@@ -97,31 +97,27 @@ int main(int argc, char *argv[])
 	host = argv[1];
 	port = atoi(argv[2]);
 	filename = argv[3];
-	int clientfd[10];
+	int clientfd;
+	// char *filenames[10];
 
-	clientfd[0] = Open_clientfd(host, port);
-	clientSend(clientfd[0], "/1.cgi?3");
+	// filenames[0] = strdup("/1.cgi?3");
+	// filenames[1] = strdup("/1_.cgi?3");
+	// filenames[2] = strdup("/1__.cgi?3");
+	// filenames[3] = strdup("/2.cgi?3");
+	// filenames[4] = strdup("/3.cgi?3");
+	// filenames[5] = strdup("/a.html");
+	// filenames[6] = strdup("/ab.html");
+	// filenames[7] = strdup("/abc.html");
+	// filenames[8] = strdup("/abcd.html");
 
-	clientfd[1] = Open_clientfd(host, port);
-	clientSend(clientfd[1], "/1_.cgi?3");
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/abcd.html");
 
-		clientfd[2] = Open_clientfd(host, port);
-	clientSend(clientfd[2], "/1__.cgi?3");
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/");
 
-		clientfd[3] = Open_clientfd(host, port);
-	clientSend(clientfd[3], "/2.cgi?3");
-
-		clientfd[4] = Open_clientfd(host, port);
-	clientSend(clientfd[4], "/3.cgi?3");
-
-	// clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, "/abcd.html");
-
-	// clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, "/");
-
-	// clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, "/a.html");
+	clientfd = Open_clientfd(host, port);
+	clientSend(clientfd, "/a.html");
 	
 	// clientfd = Open_clientfd(host, port);
 	// clientSend(clientfd, "/boo.html");
@@ -141,8 +137,8 @@ int main(int argc, char *argv[])
 	// clientPrint(clientfd);
 	// Close(clientfd);
 
-	// // Build a threadpool to siege our server.
-	// int clients = 40;
+	// Build a threadpool to siege our server.
+	// int clients = 8;
 	// pthread_t cid[clients];
 	// int i;
 	// for (i = 0; i < clients; i++)

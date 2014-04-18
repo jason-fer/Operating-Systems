@@ -194,7 +194,7 @@ void *consumer_fifo()
 		tmp_buf->connfd = buffer[index].connfd;
 		pthread_cond_signal(&empty);
 		pthread_mutex_unlock(&m);
-		queueRequest(tmp_buf);
+		prepRequest(tmp_buf);
 		requestHandle(tmp_buf); 
 		Close(tmp_buf->connfd);
 	}
@@ -215,12 +215,17 @@ void *producer(void *portnum)
 	listenfd = Open_listenfd(*port);
 	struct sockaddr_in clientaddr;
 	int index;
+	request_buffer *tmp_buf  = (request_buffer *) malloc(buffers * sizeof(request_buffer));
+
 	for (;;) 
 	{
 		// Hold locks for the shortest time possible.
 		clientlen = sizeof(clientaddr);
 		// This blocks; must be outside mutex
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+		tmp_buf->connfd = connfd;
+		prepRequest(tmp_buf);
+
 		// No point hanging on to this connection if it's broken
 		// if(connfd <= 0 || !valid_fd(connfd)) continue;
 		pthread_mutex_lock(&m);
@@ -228,12 +233,24 @@ void *producer(void *portnum)
 			pthread_cond_wait(&empty, &m);
 		}
 		index = enqueueIndex();
-		buffer[index].connfd = connfd;
-		if(! FIFO){
-			queueRequest(&buffer[index]);
-			// There's no point sorting unless we have at least two items
-			if(numitems > 1) sortQueue();
-		}
+		buffer[index].filesize = tmp_buf->filesize ;
+		buffer[index].connfd = tmp_buf->connfd;
+		buffer[index].is_static = tmp_buf->is_static;
+		strcpy(buffer[index].buf, tmp_buf->buf);
+		strcpy(buffer[index].method, tmp_buf->method);
+		strcpy(buffer[index].uri, tmp_buf->uri);
+		strcpy(buffer[index].version, tmp_buf->version);
+		strcpy(buffer[index].filename, tmp_buf->filename);
+		strcpy(buffer[index].cgiargs, tmp_buf->cgiargs);
+		buffer[index].sbuf = tmp_buf->sbuf;
+		buffer[index].rio = tmp_buf->rio;
+		if(numitems > 1) sortQueue();
+		// if(numitems > 7){
+		// 	bufferDump(); 
+		// 	sortQueue(); 
+		// 	printf("AFTER SORT!!!!!!!!\n\n\n\n\n\n");
+		// 	bufferDump();
+		// } 
 		pthread_cond_signal(&fill);
 		pthread_mutex_unlock(&m);
 	}
@@ -252,6 +269,7 @@ void *consumer()
 		while (numitems == 0){
 			pthread_cond_wait(&fill, &m);
 		}
+		// printf("START consumer %s\n", buffer[index].filename);
 		index = dequeueIndex();
 		// Is there a faster way for SFF & SFNF?
 		// Store data in temp struct (while locked)
@@ -269,10 +287,12 @@ void *consumer()
 		// Let go of lock as quickly as possible...
 		pthread_cond_signal(&empty);
 		pthread_mutex_unlock(&m);
-		// // Multi-thread the queueRequest work if we are in FIFO mode.
-		// if(FIFO) queueRequest(tmp_buf);
+		// printf("unlock consumer %s\n", tmp_buf->filename);
+		// // Multi-thread the prepRequest work if we are in FIFO mode.
+		// if(FIFO) prepRequest(tmp_buf);
 		requestHandle(tmp_buf); // Note: empty file crashes server.
 		Close(tmp_buf->connfd);
+		// printf("Close consumer %s\n", tmp_buf->filename);
 	}
 }
 
