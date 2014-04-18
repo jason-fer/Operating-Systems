@@ -131,3 +131,27 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_wakeup_thread(void)
+{
+  char* placeHolder;
+  if (argptr(0, &placeHolder, sizeof(char*)) < 0) 
+    return -1;
+ 
+  cond_t* cv = (cond_t*)(placeHolder);
+  wakeup_thread(cv);
+  return 0;
+}
+
+int
+sys_sleep_thread(void)
+{
+  char* placeHolder;
+  if (argptr(0, &placeHolder, sizeof(char*)) < 0) 
+    return -1;
+
+  cond_t* cv = (cond_t*)(placeHolder);
+  sleep_thread(cv);
+  return 0;
+}

@@ -2,7 +2,6 @@
 #define _USER_H_
 
 struct stat;
-typedef volatile uint lock_t;
 
 // system calls
 int   fork(void);
@@ -47,5 +46,7 @@ int    thread_join();
 void   lock_acquire(lock_t*);
 void   lock_release(lock_t*);
 void   lock_init(lock_t*);
+void   cv_wait(cond_t*, lock_t*);
+void   cv_signal(cond_t*);
 #endif // _USER_H_
 

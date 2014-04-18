@@ -26,7 +26,10 @@ USER_PROGS := \
 	stack\
 	thread\
 	thread2\
-	multi
+	multi\
+	cond\
+	cond2\
+	noexit
 
 USER_PROGS := $(addprefix user/, $(USER_PROGS))
 
