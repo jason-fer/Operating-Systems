@@ -1,6 +1,5 @@
 #include "cs537.h"
 #include "request.h"
-
 /**
  * server.c: A simple web server
  *
@@ -34,8 +33,17 @@ int incrementIndex(int index){
 
 // Returns index to add the item
 int enqueueIndex() {
-	rearIndex = incrementIndex(rearIndex);
-	numitems++;
+
+	if(FIFO && buffers > 1){
+		// Increment numitems & get the right index for a circular array
+		rearIndex = incrementIndex(rearIndex);
+		numitems++;
+	} else {
+		// This must be SFF or SFNF, which both need to be sorted.
+		rearIndex = numitems;
+		numitems++;
+	}
+	
 	return rearIndex;
 }
 
@@ -43,9 +51,17 @@ int enqueueIndex() {
 int dequeueIndex() {
 	int index;
 	if(numitems == 0) return -1; // This should never happen
-	index = frontIndex;
-	frontIndex = incrementIndex(frontIndex);
-	numitems--;
+
+	if(FIFO && buffers > 1){
+		index = frontIndex;
+		frontIndex = incrementIndex(frontIndex);
+		numitems--;
+	} else {
+		// Make manual adjustments for SFNF, or SFF, or FIFO with 1 buffer
+		index = numitems - 1;
+		numitems--;
+	}
+
 	return index;
 }
 // <--End Pseudo-Queue functions
@@ -66,19 +82,17 @@ void getargs(int *port, int *threads, int *buffers, char **schedalg, int argc, c
 	if (argc != 5 // Must have 5x arguments
 			|| (*threads = atoi(argv[2])) < 1 // Must have 1 or more threads
 			|| (*buffers = atoi(argv[3])) < 1 // Must have 1 or more buffers
-			|| ( // <schedalg> must be FIFO, SFNF, or SFF
+			|| (
 					strcmp("FIFO", (*schedalg = strdup(argv[4]))) != 0
 					&& strcmp("SFNF", *schedalg) != 0 
-					&& strcmp("SFF", *schedalg) != 0 
+					&& strcmp("SFF",  *schedalg) != 0 
 					)
 			) {
 		// prompt> server [portnum] [threads] [buffers] [schedalg]
 		fprintf(stderr, "Usage: %s <portnum> <threads> <buffers> <schedalg>\n", argv[0]);
 		exit(1);
 	}
-
 	if(strcmp("FIFO", *schedalg) == 0) FIFO = 1;
-
 	*port = atoi(argv[1]);
 }
 
@@ -91,7 +105,6 @@ int compareKeys(const void *r1, const void *r2)
 
 	if(strcmp("SFNF", schedalg) == 0)
 	{
-		// Why does reversing parameters help?
 		parm1 = strlen(bf1->filename);
 		parm2 = strlen(bf2->filename);
 	} 
@@ -101,7 +114,7 @@ int compareKeys(const void *r1, const void *r2)
 		parm2 = bf2->filesize;
 	}
 
-	// Reverse sorting order (-1 / 1 switched)
+	// Reverse sorting order (-1 / 1 switched); ASC.
   if(parm1 > parm2) {
     return -1;
   } else if(parm1 < parm2) {
@@ -123,7 +136,6 @@ void currBufferDump()
 void bufferDump()
 {
 	int i;
-	// Dump the buffer data
 	for (i = 0; i < numitems; i++)
 	{
 		printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
@@ -131,7 +143,6 @@ void bufferDump()
 		printf("buffer[%d].filename %s\n", i, buffer[i].filename);
 		printf("buffer[numitems].filename %s\n", buffer[numitems].filename);
 	}
-	// exit(1);
 }
 
 int valid_fd(int fd)
@@ -144,13 +155,49 @@ int valid_fd(int fd)
  */
 void sortQueue()
 {
-	// Policies:
-	// -First-in-First-out (FIFO)
-	// -Smallest Filename First (SFNF)
-	// -Smallest File First (SFF)
-	if(FIFO) return;
   qsort(buffer, numitems, sizeof(request_buffer), compareKeys);
-  // bufferDump();
+}
+
+void *producer_fifo(void *portnum)
+{
+	int *port = (int*) portnum;
+	int listenfd, clientlen, connfd;
+	listenfd = Open_listenfd(*port);
+	struct sockaddr_in clientaddr;
+	int index;
+	for (;;) 
+	{
+		clientlen = sizeof(clientaddr);
+		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+		pthread_mutex_lock(&m);
+		while (numitems == buffers){
+			pthread_cond_wait(&empty, &m);
+		}
+		index = enqueueIndex();
+		buffer[index].connfd = connfd;
+		pthread_cond_signal(&fill);
+		pthread_mutex_unlock(&m);
+	}
+}
+
+void *consumer_fifo()
+{
+	int index;
+	request_buffer *tmp_buf  = (request_buffer *) malloc(buffers * sizeof(request_buffer));
+	for (;;) 
+	{
+		pthread_mutex_lock(&m);
+		while (numitems == 0){
+			pthread_cond_wait(&fill, &m);
+		}
+		index = dequeueIndex();
+		tmp_buf->connfd = buffer[index].connfd;
+		pthread_cond_signal(&empty);
+		pthread_mutex_unlock(&m);
+		queueRequest(tmp_buf);
+		requestHandle(tmp_buf); 
+		Close(tmp_buf->connfd);
+	}
 }
 
 /**
@@ -168,7 +215,6 @@ void *producer(void *portnum)
 	listenfd = Open_listenfd(*port);
 	struct sockaddr_in clientaddr;
 	int index;
-
 	for (;;) 
 	{
 		// Hold locks for the shortest time possible.
@@ -176,26 +222,18 @@ void *producer(void *portnum)
 		// This blocks; must be outside mutex
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
 		// No point hanging on to this connection if it's broken
-		if(connfd <= 0 || !valid_fd(connfd)) continue;
-
+		// if(connfd <= 0 || !valid_fd(connfd)) continue;
 		pthread_mutex_lock(&m);
 		while (numitems == buffers){
 			pthread_cond_wait(&empty, &m);
 		}
-
-		if(FIFO && buffers > 1){
-			// Increment numitems & get the right index for a circular array
-			index = enqueueIndex();
-		} else {
-			// This must be SFF or SFNF, which both need to be sorted.
-			index = numitems;
-			numitems++;
-		}
+		index = enqueueIndex();
 		buffer[index].connfd = connfd;
-		queueRequest(&buffer[index]);
-		// There's no point sorting unless we have at least two items
-		if(numitems > 1) sortQueue();
-		// if(numitems == 8) sortQueue();
+		if(! FIFO){
+			queueRequest(&buffer[index]);
+			// There's no point sorting unless we have at least two items
+			if(numitems > 1) sortQueue();
+		}
 		pthread_cond_signal(&fill);
 		pthread_mutex_unlock(&m);
 	}
@@ -208,23 +246,14 @@ void *consumer()
 {
 	int index;
 	request_buffer *tmp_buf  = (request_buffer *) malloc(buffers * sizeof(request_buffer));
-
 	for (;;) 
 	{
 		pthread_mutex_lock(&m);
 		while (numitems == 0){
 			pthread_cond_wait(&fill, &m);
 		}
-
-		if(FIFO && buffers > 1){
-			// FIFO uses a circular array
-			// Decrement numitems & get the right index
-			index = dequeueIndex();
-		} else {
-			// Make manual adjustments for SFNF, or SFF
-			index = numitems - 1;
-			numitems--;
-		}
+		index = dequeueIndex();
+		// Is there a faster way for SFF & SFNF?
 		// Store data in temp struct (while locked)
 		tmp_buf->filesize = buffer[index].filesize;
 		tmp_buf->connfd = buffer[index].connfd;
@@ -237,16 +266,12 @@ void *consumer()
 		strcpy(tmp_buf->cgiargs, buffer[index].cgiargs);
 		tmp_buf->sbuf = buffer[index].sbuf;
 		tmp_buf->rio = buffer[index].rio;
-
 		// Let go of lock as quickly as possible...
 		pthread_cond_signal(&empty);
 		pthread_mutex_unlock(&m);
-
-		// Throw this buffer item away if it's broken
-		if(!valid_fd(tmp_buf->connfd)) continue;
-
-		// NOTE!!! the server crashes if the file is empty!!!!!!! (mmap error)
-		requestHandle(tmp_buf); 
+		// // Multi-thread the queueRequest work if we are in FIFO mode.
+		// if(FIFO) queueRequest(tmp_buf);
+		requestHandle(tmp_buf); // Note: empty file crashes server.
 		Close(tmp_buf->connfd);
 	}
 }
@@ -260,12 +285,22 @@ int main(int argc, char *argv[])
 	buffer = (request_buffer *) malloc(buffers * sizeof(request_buffer));
 	pthread_t pid, cid[threads];
 
-	// Init producer
-	pthread_create(&pid, NULL, producer, (void*) &port);
-	// Create fixed size pool of consumer threads.
-	for (i = 0; i < threads; i++)
-	{
-		pthread_create(&cid[i], NULL, consumer, NULL);
+	if(! FIFO){
+		// Init producer
+		pthread_create(&pid, NULL, producer, (void*) &port);
+		// Create fixed size pool of consumer threads.
+		for (i = 0; i < threads; i++)
+		{
+			pthread_create(&cid[i], NULL, consumer, NULL);
+		}
+	} else {
+		// Init producer
+		pthread_create(&pid, NULL, producer_fifo, (void*) &port);
+		// Create fixed size pool of consumer threads.
+		for (i = 0; i < threads; i++)
+		{
+			pthread_create(&cid[i], NULL, consumer_fifo, NULL);
+		}	
 	}
 
 	pthread_join(pid, NULL);

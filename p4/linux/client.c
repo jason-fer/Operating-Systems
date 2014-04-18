@@ -97,31 +97,46 @@ int main(int argc, char *argv[])
 	host = argv[1];
 	port = atoi(argv[2]);
 	filename = argv[3];
-	int clientfd;
+	int clientfd[10];
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/abcd.html");
+	clientfd[0] = Open_clientfd(host, port);
+	clientSend(clientfd[0], "/1.cgi?3");
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/");
+	clientfd[1] = Open_clientfd(host, port);
+	clientSend(clientfd[1], "/1_.cgi?3");
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/a.html");
+		clientfd[2] = Open_clientfd(host, port);
+	clientSend(clientfd[2], "/1__.cgi?3");
+
+		clientfd[3] = Open_clientfd(host, port);
+	clientSend(clientfd[3], "/2.cgi?3");
+
+		clientfd[4] = Open_clientfd(host, port);
+	clientSend(clientfd[4], "/3.cgi?3");
+
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/abcd.html");
+
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/");
+
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/a.html");
 	
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/boo.html");
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/boo.html");
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/1_.html");
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/1_.html");
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/abc.html");
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/abc.html");
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/ab.html");
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/ab.html");
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/1__.html");
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/1__.html");
 
 	// clientPrint(clientfd);
 	// Close(clientfd);
