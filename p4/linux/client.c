@@ -23,6 +23,9 @@
 
 #include "cs537.h"
 
+	char *host, *filename;
+	int port;
+
 /*
  * Send an HTTP request for the specified file 
  */
@@ -46,7 +49,7 @@ void clientPrint(int fd)
 {
 	rio_t rio;
 	char buf[MAXBUF];  
-	int length = 0;
+	// int length = 0;
 	int n;
 	
 	Rio_readinitb(&rio, fd);
@@ -55,28 +58,37 @@ void clientPrint(int fd)
 	n = Rio_readlineb(&rio, buf, MAXBUF);
 	while (strcmp(buf, "\r\n") && (n > 0)) {
 		printf("Header: %s", buf);
-		n = Rio_readlineb(&rio, buf, MAXBUF);
+		// n = Rio_readlineb(&rio, buf, MAXBUF);
 
 		/* If you want to look for certain HTTP tags... */
-		if (sscanf(buf, "Content-Length: %d ", &length) == 1) {
-			printf("Length = %d\n", length);
-		}
+		// if (sscanf(buf, "Content-Length: %d ", &length) == 1) {
+		// 	printf("Length = %d\n", length);
+		// }
 	}
 
 	/* Read and display the HTTP Body */
 	n = Rio_readlineb(&rio, buf, MAXBUF);
 	while (n > 0) {
-		printf("%s", buf);
+		// printf("%s", buf);
 		n = Rio_readlineb(&rio, buf, MAXBUF);
 	}
 }
 
+void *stress_test()
+{
+	int clientfd, i;
+	for (i = 0; i < 200; i++)
+	{
+		clientfd = Open_clientfd(host, port);
+		clientSend(clientfd, filename);
+		clientPrint(clientfd);
+		Close(clientfd);
+	}
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
-	char *host, *filename;
-	int port;
-	int clientfd;
-
 	if (argc != 4) {
 		fprintf(stderr, "Usage: %s <host> <port> <filename>\n", argv[0]);
 		exit(1);
@@ -85,66 +97,62 @@ int main(int argc, char *argv[])
 	host = argv[1];
 	port = atoi(argv[2]);
 	filename = argv[3];
+	int clientfd[10];
 
-	/* Open a single connection to the specified host and port */
-	// @todo: make this multi-threaded to more effectively test our server
-	// int i;
-	// char *foo = "x.html";
-	// for (i = 1; i <= 5; ++i)
-	// {
-	// 	clientfd = Open_clientfd(host, port);
-	// 	// Start several requests in a row & don't wait
-	// 	// clientSend(clientfd, filename);
-	// 	foo[0] = (char) i;
-	// 	clientSend(clientfd, foo);
-	// 	// clientPrint(clientfd);
-	// 	// Close(clientfd);
-	// }
+	clientfd[0] = Open_clientfd(host, port);
+	clientSend(clientfd[0], "/1.cgi?3");
 
-	clientfd = Open_clientfd(host, port);
-	clientSend(clientfd, "/1.html");
-	Close(clientfd);
+	clientfd[1] = Open_clientfd(host, port);
+	clientSend(clientfd[1], "/1_.cgi?3");
+
+		clientfd[2] = Open_clientfd(host, port);
+	clientSend(clientfd[2], "/1__.cgi?3");
+
+		clientfd[3] = Open_clientfd(host, port);
+	clientSend(clientfd[3], "/2.cgi?3");
+
+		clientfd[4] = Open_clientfd(host, port);
+	clientSend(clientfd[4], "/3.cgi?3");
 
 	// clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, "/2.html");
-	// Close(clientfd);
+	// clientSend(clientfd, "/abcd.html");
 
 	// clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, "/3.html");
-	// Close(clientfd);
+	// clientSend(clientfd, "/");
 
 	// clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, "/4.html");
-	// Close(clientfd);
+	// clientSend(clientfd, "/a.html");
+	
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/boo.html");
 
 	// clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, "/5.html");
-	// Close(clientfd);
-
-	// 	clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, "/1.cgi?10");
-	// Close(clientfd);
+	// clientSend(clientfd, "/1_.html");
 
 	// clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, "/2.cgi?20");
-	// Close(clientfd);
-
-	// 	clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, "/3.cgi?30");
-	// Close(clientfd);
-
-	// 	clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, "/1.cgi?40");
-	// Close(clientfd);
-
-	// 	clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, "/2.cgi?50");
-	// Close(clientfd);
+	// clientSend(clientfd, "/abc.html");
 
 	// clientfd = Open_clientfd(host, port);
-	// clientSend(clientfd, filename);
+	// clientSend(clientfd, "/ab.html");
+
+	// clientfd = Open_clientfd(host, port);
+	// clientSend(clientfd, "/1__.html");
+
 	// clientPrint(clientfd);
 	// Close(clientfd);
 
-	exit(0);
+	// // Build a threadpool to siege our server.
+	// int clients = 40;
+	// pthread_t cid[clients];
+	// int i;
+	// for (i = 0; i < clients; i++)
+	// {
+	// 	pthread_create(&cid[i], NULL, stress_test, NULL);
+	// }
+	// for (i = 0; i < clients; i++)
+	// {
+	// 	pthread_join(cid[i], NULL);
+	// }
+
+	return 0;
 }
