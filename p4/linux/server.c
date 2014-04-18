@@ -173,6 +173,7 @@ void *producer_fifo(void *portnum)
 		while (numitems == buffers){
 			pthread_cond_wait(&empty, &m);
 		}
+		// Do as little as possible inside the lock
 		index = enqueueIndex();
 		buffer[index].connfd = connfd;
 		pthread_cond_signal(&fill);
@@ -186,6 +187,7 @@ void *consumer_fifo()
 	request_buffer *tmp_buf  = (request_buffer *) malloc(buffers * sizeof(request_buffer));
 	for (;;) 
 	{
+		// Do as little as possible inside the lock
 		pthread_mutex_lock(&m);
 		while (numitems == 0){
 			pthread_cond_wait(&fill, &m);
@@ -194,8 +196,10 @@ void *consumer_fifo()
 		tmp_buf->connfd = buffer[index].connfd;
 		pthread_cond_signal(&empty);
 		pthread_mutex_unlock(&m);
-		prepRequest(tmp_buf);
-		requestHandle(tmp_buf); 
+
+		// The request is handled almost completely outside the lock... 
+		requestHandleFifo(tmp_buf->connfd);
+		// requestHandle(tmp_buf); 
 		Close(tmp_buf->connfd);
 	}
 }
@@ -244,6 +248,7 @@ void *producer(void *portnum)
 		strcpy(buffer[index].cgiargs, tmp_buf->cgiargs);
 		buffer[index].sbuf = tmp_buf->sbuf;
 		buffer[index].rio = tmp_buf->rio;
+
 		if(numitems > 1) sortQueue();
 		// if(numitems > 7){
 		// 	bufferDump(); 
