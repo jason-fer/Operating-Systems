@@ -1,7 +1,7 @@
 #include "cs537.h"
 #include "request.h"
 /**
- * server.c: A simple web server
+ * server.c: Turned a single thread web server into a multi-threaded web server
  *
  * Repeatedly handles HTTP requests sent to the port number.
  * Most of the work is done within routines written in request.c
@@ -15,6 +15,8 @@ pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
 pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
 int FIFO = 0;
+int SFNF = 0;
+int SFF = 0;
 // Simple Queue (buffers ==  max buffers / items)
 int buffers = 0; // max buffers
 int numitems = 0; // number of items currently in the buffer
@@ -33,8 +35,7 @@ int incrementIndex(int index){
 }
 
 // Returns index to add the item
-int enqueueIndex() {
-
+int enqueueIndex(){
 	if(FIFO && buffers > 1){
 		// Increment numitems & get the right index for a circular array
 		rearIndex = incrementIndex(rearIndex);
@@ -44,15 +45,13 @@ int enqueueIndex() {
 		rearIndex = numitems;
 		numitems++;
 	}
-	
 	return rearIndex;
 }
 
 // Return indexto retrieve the item
-int dequeueIndex() {
+int dequeueIndex(){
 	int index;
 	if(numitems == 0) return -1; // This should never happen
-
 	if(FIFO && buffers > 1){
 		index = frontIndex;
 		frontIndex = incrementIndex(frontIndex);
@@ -62,7 +61,6 @@ int dequeueIndex() {
 		index = numitems - 1;
 		numitems--;
 	}
-
 	return index;
 }
 // <--End Pseudo-Queue functions
@@ -94,69 +92,106 @@ void getargs(int *port, int *threads, int *buffers, char **schedalg, int argc, c
 		exit(1);
 	}
 	if(strcmp("FIFO", *schedalg) == 0) FIFO = 1;
+	if(strcmp("SFNF", *schedalg) == 0) SFNF = 1;
+	if(strcmp("SFF", *schedalg) == 0) SFF = 1;
 	*port = atoi(argv[1]);
 }
 
-int compareKeys(const void *r1, const void *r2)
+int sfnfCompareKeys(const void *r1, const void *r2)
 {
   request_buffer *bf1 = (request_buffer*) r1;
   request_buffer *bf2 = (request_buffer*) r2;
-  int parm1 = 0;
-  int parm2 = 0;
-
-	if(strcmp("SFNF", schedalg) == 0)
-	{
-		parm1 = strlen(bf1->filename);
-		parm2 = strlen(bf2->filename);
-	} 
-	else if(strcmp("SFF", schedalg) == 0)
-	{
-		parm1 = bf1->filesize;
-		parm2 = bf2->filesize;
-	}
-
+  int parm1 = strlen(bf1->filename);
+  int parm2 = strlen(bf2->filename);
 	// Reverse sorting order (-1 / 1 switched); ASC.
   if(parm1 > parm2) {
     return -1;
   } else if(parm1 < parm2) {
     return 1;
   }
-
   return 0;
 }
 
-void currBufferDump()
+int sffCompareKeys(const void *r1, const void *r2)
 {
-	int i = numitems - 1;
-	printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
-	printf("buffer[%d].filesize %d\n", i, buffer[i].filesize);
-	printf("buffer[%d].filename %s\n", i, buffer[i].filename);
-	printf("buffer[numitems].filename %s\n", buffer[i].filename);
+  request_buffer *bf1 = (request_buffer*) r1;
+  request_buffer *bf2 = (request_buffer*) r2;
+	int parm1 = bf1->filesize;
+	int parm2 = bf2->filesize;
+	// Reverse sorting order (-1 / 1 switched); ASC.
+  if(parm1 > parm2) {
+    return -1;
+  } else if(parm1 < parm2) {
+    return 1;
+  }
+  return 0;
 }
 
-void bufferDump()
-{
-	int i;
-	for (i = 0; i < numitems; i++)
-	{
-		printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
-		printf("buffer[%d].filesize %d\n", i, buffer[i].filesize);
-		printf("buffer[%d].filename %s\n", i, buffer[i].filename);
-		printf("buffer[numitems].filename %s\n", buffer[numitems].filename);
-	}
-}
+// int compareKeys(const void *r1, const void *r2)
+// {
+//   request_buffer *bf1 = (request_buffer*) r1;
+//   request_buffer *bf2 = (request_buffer*) r2;
+//   int parm1 = 0;
+//   int parm2 = 0;
 
-int valid_fd(int fd)
-{
-	return fcntl(fd, F_GETFD) != -1 || errno != EBADF;
-}
+// 	if(strcmp("SFNF", schedalg) == 0)
+// 	{
+// 		parm1 = strlen(bf1->filename);
+// 		parm2 = strlen(bf2->filename);
+// 	} 
+// 	else if(strcmp("SFF", schedalg) == 0)
+// 	{
+// 		parm1 = bf1->filesize;
+// 		parm2 = bf2->filesize;
+// 	}
 
-/**
- * Sort the contents of the buffer
- */
-void sortQueue()
+// 	// Reverse sorting order (-1 / 1 switched); ASC.
+//   if(parm1 > parm2) {
+//     return -1;
+//   } else if(parm1 < parm2) {
+//     return 1;
+//   }
+
+//   return 0;
+// }
+
+// void currBufferDump()
+// {
+// 	int i = numitems - 1;
+// 	printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
+// 	printf("buffer[%d].filesize %d\n", i, buffer[i].filesize);
+// 	printf("buffer[%d].filename %s\n", i, buffer[i].filename);
+// 	printf("buffer[numitems].filename %s\n", buffer[i].filename);
+// }
+
+// void bufferDump()
+// {
+// 	int i;
+// 	for (i = 0; i < numitems; i++)
+// 	{
+// 		printf("buffer[%d].connfd %d\n", i, buffer[i].connfd);
+// 		printf("buffer[%d].filesize %d\n", i, buffer[i].filesize);
+// 		printf("buffer[%d].filename %s\n", i, buffer[i].filename);
+// 		printf("buffer[numitems].filename %s\n", buffer[numitems].filename);
+// 	}
+// }
+
+// int valid_fd(int fd)
+// {
+// 	return fcntl(fd, F_GETFD) != -1 || errno != EBADF;
+// }
+
+// void sortQueue()
+// {
+//   qsort(buffer, numitems, sizeof(request_buffer), compareKeys);
+// }
+void sfnfSortQueue()
 {
-  qsort(buffer, numitems, sizeof(request_buffer), compareKeys);
+  qsort(buffer, numitems, sizeof(request_buffer), sfnfCompareKeys);
+}
+void sffSortQueue()
+{
+  qsort(buffer, numitems, sizeof(request_buffer), sffCompareKeys);
 }
 
 void *producer_fifo(void *portnum)
@@ -165,7 +200,6 @@ void *producer_fifo(void *portnum)
 	int listenfd, clientlen, connfd;
 	listenfd = Open_listenfd(*port);
 	struct sockaddr_in clientaddr;
-	int index;
 	// Sacrificing code simplicity, for efficiency.
 	if(buffers > 1){
 		for (;;) 
@@ -177,31 +211,29 @@ void *producer_fifo(void *portnum)
 				pthread_cond_wait(&empty, &m);
 			}
 			// Do as little as possible inside the lock
-			rearIndex = incrementIndex(rearIndex);
-			index = rearIndex;
+			rearIndex = (rearIndex + 1) % buffers;
 			numitems++;
-			buffer[index].connfd = connfd;
-			pthread_cond_signal(&fill);
+			buffer[rearIndex].connfd = connfd;
+			pthread_cond_broadcast(&fill);
 			pthread_mutex_unlock(&m);
 		}
 	} else {
 		for (;;) 
-			{
-				clientlen = sizeof(clientaddr);
-				connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
-				pthread_mutex_lock(&m);
-				while (numitems == buffers){
-					pthread_cond_wait(&empty, &m);
-				}
-				// Do as little as possible inside the lock
-				rearIndex = numitems;
-				numitems++;
-				index = rearIndex;
-				buffer[index].connfd = connfd;
-				pthread_cond_signal(&fill);
-				pthread_mutex_unlock(&m);
+		{
+			clientlen = sizeof(clientaddr);
+			connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+			pthread_mutex_lock(&m);
+			while (numitems == buffers){
+				pthread_cond_wait(&empty, &m);
 			}
+			// Do as little as possible inside the lock
+			rearIndex = numitems;
+			numitems++;
+			buffer[rearIndex].connfd = connfd;
+			pthread_cond_broadcast(&fill);
+			pthread_mutex_unlock(&m);
 		}
+	}
 }
 
 void *consumer_fifo()
@@ -217,16 +249,15 @@ void *consumer_fifo()
 			while (numitems == 0){
 				pthread_cond_wait(&fill, &m);
 			}
+			// Using circular queue
 			index = frontIndex;
-			frontIndex = incrementIndex(frontIndex);
+			frontIndex = (frontIndex + 1) % buffers;
 			numitems--;
 			tmp_buf->connfd = buffer[index].connfd;
 			pthread_cond_signal(&empty);
 			pthread_mutex_unlock(&m);
-
 			// The request is handled almost completely outside the lock... 
 			requestHandleFifo(tmp_buf->connfd);
-			// requestHandle(tmp_buf); 
 			Close(tmp_buf->connfd);
 		}
 	} else {
@@ -237,14 +268,13 @@ void *consumer_fifo()
 			while (numitems == 0){
 				pthread_cond_wait(&fill, &m);
 			}
-			index = numitems - 1;
+			// Using a single buffer
 			numitems--;
-			tmp_buf->connfd = buffer[index].connfd;
+			tmp_buf->connfd = buffer[numitems].connfd;
 			pthread_cond_signal(&empty);
 			pthread_mutex_unlock(&m);
 			// The request is handled almost completely outside the lock... 
 			requestHandleFifo(tmp_buf->connfd);
-			// requestHandle(tmp_buf); 
 			Close(tmp_buf->connfd);
 		}
 	}
@@ -264,10 +294,8 @@ void *producer(void *portnum)
 	int listenfd, clientlen, connfd;
 	listenfd = Open_listenfd(*port);
 	struct sockaddr_in clientaddr;
-	int index;
 	request_buffer *tmp_buf  = (request_buffer *) malloc(buffers * sizeof(request_buffer));
-
-	for (;;) 
+	for (;;)
 	{
 		// Hold locks for the shortest time possible.
 		clientlen = sizeof(clientaddr);
@@ -275,44 +303,39 @@ void *producer(void *portnum)
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
 		tmp_buf->connfd = connfd;
 		prepRequest(tmp_buf);
-
 		// No point hanging on to this connection if it's broken
 		// if(connfd <= 0 || !valid_fd(connfd)) continue;
 		pthread_mutex_lock(&m);
 		while (numitems == buffers){
 			pthread_cond_wait(&empty, &m);
 		}
-		index = enqueueIndex();
-		buffer[index].filesize = tmp_buf->filesize ;
-		buffer[index].connfd = tmp_buf->connfd;
-		buffer[index].is_static = tmp_buf->is_static;
-		strcpy(buffer[index].buf, tmp_buf->buf);
-		strcpy(buffer[index].method, tmp_buf->method);
-		strcpy(buffer[index].uri, tmp_buf->uri);
-		strcpy(buffer[index].version, tmp_buf->version);
-		strcpy(buffer[index].filename, tmp_buf->filename);
-		strcpy(buffer[index].cgiargs, tmp_buf->cgiargs);
-		buffer[index].sbuf = tmp_buf->sbuf;
-		buffer[index].rio = tmp_buf->rio;
-
-		if(numitems > 1) sortQueue();
-		// if(numitems > 7){
-		// 	bufferDump(); 
-		// 	sortQueue(); 
-		// 	printf("AFTER SORT!!!!!!!!\n\n\n\n\n\n");
-		// 	bufferDump();
-		// } 
-		pthread_cond_signal(&fill);
+		rearIndex = numitems;
+		numitems++;
+		buffer[rearIndex].filesize = tmp_buf->filesize ;
+		buffer[rearIndex].connfd = tmp_buf->connfd;
+		buffer[rearIndex].is_static = tmp_buf->is_static;
+		strcpy(buffer[rearIndex].buf, tmp_buf->buf);
+		strcpy(buffer[rearIndex].method, tmp_buf->method);
+		strcpy(buffer[rearIndex].uri, tmp_buf->uri);
+		strcpy(buffer[rearIndex].version, tmp_buf->version);
+		strcpy(buffer[rearIndex].filename, tmp_buf->filename);
+		strcpy(buffer[rearIndex].cgiargs, tmp_buf->cgiargs);
+		buffer[rearIndex].sbuf = tmp_buf->sbuf;
+		buffer[rearIndex].rio = tmp_buf->rio;
+		if(numitems > 1){
+			if(SFNF){
+				qsort(buffer, numitems, sizeof(request_buffer), sfnfCompareKeys);
+			} else {
+				qsort(buffer, numitems, sizeof(request_buffer), sffCompareKeys);
+			}
+		}
+		pthread_cond_broadcast(&fill);
 		pthread_mutex_unlock(&m);
 	}
 }
 
-/**
- * Function for the consumers in the threadpool
- */
 void *consumer()
 {
-	int index;
 	request_buffer *tmp_buf  = (request_buffer *) malloc(buffers * sizeof(request_buffer));
 	for (;;) 
 	{
@@ -320,32 +343,64 @@ void *consumer()
 		while (numitems == 0){
 			pthread_cond_wait(&fill, &m);
 		}
-		// printf("START consumer %s\n", buffer[index].filename);
-		index = dequeueIndex();
-		// Is there a faster way for SFF & SFNF?
-		// Store data in temp struct (while locked)
-		tmp_buf->filesize = buffer[index].filesize;
-		tmp_buf->connfd = buffer[index].connfd;
-		tmp_buf->is_static = buffer[index].is_static;
-		strcpy(tmp_buf->buf, buffer[index].buf);
-		strcpy(tmp_buf->method, buffer[index].method);
-		strcpy(tmp_buf->uri, buffer[index].uri);
-		strcpy(tmp_buf->version, buffer[index].version);
-		strcpy(tmp_buf->filename, buffer[index].filename);
-		strcpy(tmp_buf->cgiargs, buffer[index].cgiargs);
-		tmp_buf->sbuf = buffer[index].sbuf;
-		tmp_buf->rio = buffer[index].rio;
-		// Let go of lock as quickly as possible...
+		numitems--;
+		tmp_buf->filesize = buffer[numitems].filesize;
+		tmp_buf->connfd = buffer[numitems].connfd;
+		tmp_buf->is_static = buffer[numitems].is_static;
+		strcpy(tmp_buf->buf, buffer[numitems].buf);
+		strcpy(tmp_buf->method, buffer[numitems].method);
+		strcpy(tmp_buf->uri, buffer[numitems].uri);
+		strcpy(tmp_buf->version, buffer[numitems].version);
+		strcpy(tmp_buf->filename, buffer[numitems].filename);
+		strcpy(tmp_buf->cgiargs, buffer[numitems].cgiargs);
+		tmp_buf->sbuf = buffer[numitems].sbuf;
+		tmp_buf->rio = buffer[numitems].rio;
 		pthread_cond_signal(&empty);
 		pthread_mutex_unlock(&m);
-		// printf("unlock consumer %s\n", tmp_buf->filename);
-		// // Multi-thread the prepRequest work if we are in FIFO mode.
-		// if(FIFO) prepRequest(tmp_buf);
 		requestHandle(tmp_buf); // Note: empty file crashes server.
 		Close(tmp_buf->connfd);
-		// printf("Close consumer %s\n", tmp_buf->filename);
 	}
 }
+
+/**
+ * Function for the consumers in the threadpool
+ */
+// void *consumer()
+// {
+// 	int index;
+// 	request_buffer *tmp_buf  = (request_buffer *) malloc(buffers * sizeof(request_buffer));
+// 	for (;;) 
+// 	{
+// 		pthread_mutex_lock(&m);
+// 		while (numitems == 0){
+// 			pthread_cond_wait(&fill, &m);
+// 		}
+// 		// printf("START consumer %s\n", buffer[index].filename);
+// 		index = dequeueIndex();
+// 		// Is there a faster way for SFF & SFNF?
+// 		// Store data in temp struct (while locked)
+// 		tmp_buf->filesize = buffer[index].filesize;
+// 		tmp_buf->connfd = buffer[index].connfd;
+// 		tmp_buf->is_static = buffer[index].is_static;
+// 		strcpy(tmp_buf->buf, buffer[index].buf);
+// 		strcpy(tmp_buf->method, buffer[index].method);
+// 		strcpy(tmp_buf->uri, buffer[index].uri);
+// 		strcpy(tmp_buf->version, buffer[index].version);
+// 		strcpy(tmp_buf->filename, buffer[index].filename);
+// 		strcpy(tmp_buf->cgiargs, buffer[index].cgiargs);
+// 		tmp_buf->sbuf = buffer[index].sbuf;
+// 		tmp_buf->rio = buffer[index].rio;
+// 		// Let go of lock as quickly as possible...
+// 		pthread_cond_signal(&empty);
+// 		pthread_mutex_unlock(&m);
+// 		// printf("unlock consumer %s\n", tmp_buf->filename);
+// 		// // Multi-thread the prepRequest work if we are in FIFO mode.
+// 		// if(FIFO) prepRequest(tmp_buf);
+// 		requestHandle(tmp_buf); // Note: empty file crashes server.
+// 		Close(tmp_buf->connfd);
+// 		// printf("Close consumer %s\n", tmp_buf->filename);
+// 	}
+// }
 
 int main(int argc, char *argv[])
 {
@@ -356,22 +411,17 @@ int main(int argc, char *argv[])
 	buffer = (request_buffer *) malloc(buffers * sizeof(request_buffer));
 	pthread_t pid, cid[threads];
 
-	if(! FIFO){
-		// Init producer
-		pthread_create(&pid, NULL, producer, (void*) &port);
-		// Create fixed size pool of consumer threads.
-		for (i = 0; i < threads; i++)
-		{
-			pthread_create(&cid[i], NULL, consumer, NULL);
+	// Init producer & create fixed size pool of consumer threads.
+	if(FIFO){
+		pthread_create(&pid, NULL, producer_fifo, (void*) &port);
+		for (i = 0; i < threads; i++){
+			pthread_create(&cid[i], NULL, consumer_fifo, NULL);
 		}
 	} else {
-		// Init producer
-		pthread_create(&pid, NULL, producer_fifo, (void*) &port);
-		// Create fixed size pool of consumer threads.
-		for (i = 0; i < threads; i++)
-		{
-			pthread_create(&cid[i], NULL, consumer_fifo, NULL);
-		}	
+		pthread_create(&pid, NULL, producer, (void*) &port);
+		for (i = 0; i < threads; i++){
+			pthread_create(&cid[i], NULL, consumer, NULL);
+		}
 	}
 
 	pthread_join(pid, NULL);

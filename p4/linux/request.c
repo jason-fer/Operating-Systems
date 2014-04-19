@@ -213,7 +213,6 @@ void requestHandleFifo(int fd)
 	 sscanf(buf, "%s %s %s", method, uri, version);
 
 	 // printf("%s %s %s\n", method, uri, version);
-
 	 if (strcasecmp(method, "GET")) {
 			requestError(fd, method, "501", "Not Implemented", "CS537 Server does not implement this method");
 			return;
