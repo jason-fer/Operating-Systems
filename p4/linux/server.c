@@ -1,5 +1,6 @@
 #include "cs537.h"
 #include "request.h"
+
 /**
  * server.c: Turned a single thread web server into a multi-threaded web server
  *
@@ -9,6 +10,7 @@
  * Generates a threadpool and buffer size based on specified sizes (both must)
  * be > 0. 
  */
+
 char *schedalg = "Must be FIFO, SNFNF or SFF";
 request_buffer *buffer; // an 'array' of buffer structs
 int *fifo_buffer; // a list of connection file descriptors
@@ -222,20 +224,21 @@ void *producer(void *portnum)
 		while (numitems == buffers){
 			pthread_cond_wait(&empty, &m);
 		}
+
 		rearIndex = numitems;
 		numitems++;
+		
 		buffer[rearIndex].connfd = tmp_buf->connfd;
 		strcpy(buffer[rearIndex].filename, tmp_buf->filename);
 		buffer[rearIndex].filesize = tmp_buf->filesize;
 		strcpy(buffer[rearIndex].buf, tmp_buf->buf);
-		buffer[rearIndex].rio = tmp_buf->rio;
-		// if(numitems > 1){
-			if(SFNF){
-				qsort(buffer, numitems, sizeof(request_buffer), sfnfCompareKeys);
-			} else { // SFF
-				qsort(buffer, numitems, sizeof(request_buffer), sffCompareKeys);
-			}
-		// }
+		// buffer[rearIndex].rio = tmp_buf->rio;
+
+		if(SFNF){
+			qsort(buffer, numitems, sizeof(request_buffer), sfnfCompareKeys);
+		} else { // SFF
+			qsort(buffer, numitems, sizeof(request_buffer), sffCompareKeys);
+		}
 		pthread_cond_signal(&fill);
 		pthread_mutex_unlock(&m);
 	}
@@ -250,13 +253,17 @@ void *consumer()
 		while (numitems == 0){
 			pthread_cond_wait(&fill, &m);
 		}
+
 		numitems--;
+
 		strcpy(tmp_buf->buf, buffer[numitems].buf);
 		strcpy(tmp_buf->filename, buffer[numitems].filename);
 		tmp_buf->connfd = buffer[numitems].connfd;
-		tmp_buf->rio = buffer[numitems].rio;
+		// tmp_buf->rio = buffer[numitems].rio;
+
 		pthread_cond_signal(&empty);
 		pthread_mutex_unlock(&m);
+
 		requestHandle(tmp_buf); // Note: empty file crashes server.
 		Close(tmp_buf->connfd);
 	}

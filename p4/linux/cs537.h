@@ -64,7 +64,6 @@ typedef struct {
   int connfd; // connection file descriptor
   char buf[MAXLINE];
   char filename[MAXLINE];
-  rio_t rio;
 } request_buffer;
 /* $end request_buffer */
 

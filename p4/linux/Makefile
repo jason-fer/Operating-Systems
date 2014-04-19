@@ -22,14 +22,9 @@ client: client.o cs537.o
 
 output.cgi: output.c
 	$(CC) $(CFLAGS) -o output.cgi output.c
-	$(CC) $(CFLAGS) -o 1.cgi output.c
-	$(CC) $(CFLAGS) -o 1_.cgi output.c
-	$(CC) $(CFLAGS) -o 1__.cgi output.c
-	$(CC) $(CFLAGS) -o 2.cgi output.c
-	$(CC) $(CFLAGS) -o 3.cgi output.c
 
 .c.o:
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 clean:
-	-rm -f $(OBJS) server client output.cgi 1.cgi 1_.cgi 1__.cgi 2.cgi 3.cgi
+	-rm -f $(OBJS) server client output.cgi

@@ -153,9 +153,10 @@ void prepRequest(request_buffer *buffer)
 {
 	struct stat sbuf;
 	char method[MAXLINE], uri[MAXLINE], version[MAXLINE], cgiargs[MAXLINE];
+	rio_t rio;
 
-	Rio_readinitb(&buffer->rio, buffer->connfd);
-	Rio_readlineb(&buffer->rio, buffer->buf, MAXLINE);
+	Rio_readinitb(&rio, buffer->connfd);
+	Rio_readlineb(&rio, buffer->buf, MAXLINE);
 	sscanf(buffer->buf, "%s %s %s", method, uri, version);
 	requestParseURI(uri, buffer->filename, cgiargs);
 	stat(buffer->filename, &sbuf);
@@ -175,7 +176,7 @@ void requestHandle(request_buffer *buffer)
 		requestError(buffer->connfd, method, "501", "Not Implemented", "CS537 Server does not implement this method");
 		return;
 	}
-	requestReadhdrs(&buffer->rio);
+	// requestReadhdrs(&buffer->rio);
 
 	is_static = requestParseURI(uri, buffer->filename, cgiargs);
 	if (stat(buffer->filename, &sbuf) < 0) {
@@ -215,7 +216,7 @@ void requestHandleFifo(int fd)
 			requestError(fd, method, "501", "Not Implemented", "CS537 Server does not implement this method");
 			return;
 	 }
-	 requestReadhdrs(&rio);
+	 // requestReadhdrs(&rio);
 
 	 is_static = requestParseURI(uri, filename, cgiargs);
 	 if (stat(filename, &sbuf) < 0) {
