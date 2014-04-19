@@ -23,12 +23,13 @@ int rearIndex = -1;
 
 // Start Pseudo-Queue functions: -->
 int incrementIndex(int index){
+	return (index + 1) % buffers;
 	// Length = number of components in the array
-	if (index == buffers - 1){ // was items.length
-		return 0;
-	} else {
-		return index + 1;
-	}
+	// if (index == buffers - 1){ // was items.length
+	// 	return 0;
+	// } else {
+	// 	return index + 1;
+	// }
 }
 
 // Returns index to add the item
@@ -165,42 +166,87 @@ void *producer_fifo(void *portnum)
 	listenfd = Open_listenfd(*port);
 	struct sockaddr_in clientaddr;
 	int index;
-	for (;;) 
-	{
-		clientlen = sizeof(clientaddr);
-		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
-		pthread_mutex_lock(&m);
-		while (numitems == buffers){
-			pthread_cond_wait(&empty, &m);
+	// Sacrificing code simplicity, for efficiency.
+	if(buffers > 1){
+		for (;;) 
+		{
+			clientlen = sizeof(clientaddr);
+			connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+			pthread_mutex_lock(&m);
+			while (numitems == buffers){
+				pthread_cond_wait(&empty, &m);
+			}
+			// Do as little as possible inside the lock
+			rearIndex = incrementIndex(rearIndex);
+			index = rearIndex;
+			numitems++;
+			buffer[index].connfd = connfd;
+			pthread_cond_signal(&fill);
+			pthread_mutex_unlock(&m);
 		}
-		// Do as little as possible inside the lock
-		index = enqueueIndex();
-		buffer[index].connfd = connfd;
-		pthread_cond_signal(&fill);
-		pthread_mutex_unlock(&m);
-	}
+	} else {
+		for (;;) 
+			{
+				clientlen = sizeof(clientaddr);
+				connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+				pthread_mutex_lock(&m);
+				while (numitems == buffers){
+					pthread_cond_wait(&empty, &m);
+				}
+				// Do as little as possible inside the lock
+				rearIndex = numitems;
+				numitems++;
+				index = rearIndex;
+				buffer[index].connfd = connfd;
+				pthread_cond_signal(&fill);
+				pthread_mutex_unlock(&m);
+			}
+		}
 }
 
 void *consumer_fifo()
 {
 	int index;
 	request_buffer *tmp_buf  = (request_buffer *) malloc(buffers * sizeof(request_buffer));
-	for (;;) 
-	{
-		// Do as little as possible inside the lock
-		pthread_mutex_lock(&m);
-		while (numitems == 0){
-			pthread_cond_wait(&fill, &m);
-		}
-		index = dequeueIndex();
-		tmp_buf->connfd = buffer[index].connfd;
-		pthread_cond_signal(&empty);
-		pthread_mutex_unlock(&m);
+	// Sacrificing code simplicity, for efficiency.
+	if(buffers > 1){
+		for (;;) 
+		{
+			// Do as little as possible inside the lock
+			pthread_mutex_lock(&m);
+			while (numitems == 0){
+				pthread_cond_wait(&fill, &m);
+			}
+			index = frontIndex;
+			frontIndex = incrementIndex(frontIndex);
+			numitems--;
+			tmp_buf->connfd = buffer[index].connfd;
+			pthread_cond_signal(&empty);
+			pthread_mutex_unlock(&m);
 
-		// The request is handled almost completely outside the lock... 
-		requestHandleFifo(tmp_buf->connfd);
-		// requestHandle(tmp_buf); 
-		Close(tmp_buf->connfd);
+			// The request is handled almost completely outside the lock... 
+			requestHandleFifo(tmp_buf->connfd);
+			// requestHandle(tmp_buf); 
+			Close(tmp_buf->connfd);
+		}
+	} else {
+		for (;;) 
+		{
+			// Do as little as possible inside the lock
+			pthread_mutex_lock(&m);
+			while (numitems == 0){
+				pthread_cond_wait(&fill, &m);
+			}
+			index = numitems - 1;
+			numitems--;
+			tmp_buf->connfd = buffer[index].connfd;
+			pthread_cond_signal(&empty);
+			pthread_mutex_unlock(&m);
+			// The request is handled almost completely outside the lock... 
+			requestHandleFifo(tmp_buf->connfd);
+			// requestHandle(tmp_buf); 
+			Close(tmp_buf->connfd);
+		}
 	}
 }
 
