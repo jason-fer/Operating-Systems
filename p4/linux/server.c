@@ -10,7 +10,8 @@
  * be > 0. 
  */
 char *schedalg = "Must be FIFO, SNFNF or SFF";
-request_buffer *buffer; // a list of connection file descriptors
+request_buffer *buffer; // an 'array' of buffer structs
+int *fifo_buffer; // a list of connection file descriptors
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
 pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
@@ -149,11 +150,11 @@ void *producer_fifo(void *portnum)
 		if(buffers > 1){
 			rearIndex = (rearIndex + 1) % buffers;
 			numitems++;
-			buffer[rearIndex].connfd = connfd;
+			fifo_buffer[rearIndex] = connfd;
 		} else {
 			rearIndex = numitems;
 			numitems++;
-			buffer[rearIndex].connfd = connfd;
+			fifo_buffer[rearIndex] = connfd;
 		}
 		pthread_cond_broadcast(&fill);
 		pthread_mutex_unlock(&m);
@@ -163,7 +164,7 @@ void *producer_fifo(void *portnum)
 void *consumer_fifo()
 {
 	int index;
-	request_buffer *tmp_buf  = (request_buffer *) malloc(buffers * sizeof(request_buffer));
+	int connfd;
 	// Sacrificing code simplicity, for efficiency.
 	for (;;) 
 	{
@@ -177,17 +178,17 @@ void *consumer_fifo()
 			index = frontIndex;
 			frontIndex = (frontIndex + 1) % buffers;
 			numitems--;
-			tmp_buf->connfd = buffer[index].connfd;
+			connfd = fifo_buffer[index];
 		} else {
 			// Using a single buffer
 			numitems--;
-			tmp_buf->connfd = buffer[numitems].connfd;
+			connfd = fifo_buffer[numitems];
 		}
 		pthread_cond_signal(&empty);
 		pthread_mutex_unlock(&m);
 		// The request is handled almost completely outside the lock... 
-		requestHandleFifo(tmp_buf->connfd);
-		Close(tmp_buf->connfd);
+		requestHandleFifo(connfd);
+		Close(connfd);
 	}
 }
 
@@ -280,6 +281,7 @@ int main(int argc, char *argv[])
 
 	// printf("port:%d, threads:%d, buffers:%d, (did it work?) schedalg:%s \n", port, threads, buffers, schedalg);
 	buffer = (request_buffer *) malloc(buffers * sizeof(request_buffer));
+	fifo_buffer = (int *) malloc(buffers * sizeof(int));
 	pthread_t pid, cid[threads];
 
 	// Init producer & create fixed size pool of consumer threads.
