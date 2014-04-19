@@ -131,6 +131,12 @@ void sffSortQueue()
   qsort(buffer, numitems, sizeof(request_buffer), sffCompareKeys);
 }
 
+/**
+ * Fill the queue with HTTP requests. A function for the master (producer) 
+ * thread. Requires a port number > 0. Responsible for accepting new http 
+ * connections over the network and placing the descriptor for this connection 
+ * into a fixed-size buffer. Cond var: block & wait if buffer is full
+ */
 void *producer_fifo(void *portnum)
 {
 	int *port = (int*) portnum;
@@ -156,7 +162,7 @@ void *producer_fifo(void *portnum)
 			numitems++;
 			fifo_buffer[rearIndex] = connfd;
 		}
-		pthread_cond_broadcast(&fill);
+		pthread_cond_signal(&fill);
 		pthread_mutex_unlock(&m);
 	}
 }
@@ -193,12 +199,7 @@ void *consumer_fifo()
 }
 
 /**
- * Fill the queue with HTTP requests. A function for the master (producer) 
- * thread. Requires a port number > 0
- * master thread (producer): responsible for accepting new http connections 
- *  over the network and placing the descriptor for this connection into a 
- *  fixed-size buffer
- *  -cond var: block & wait if buffer is full
+ * SFNF & SFF producer
  */
 void *producer(void *portnum)
 {
@@ -207,6 +208,7 @@ void *producer(void *portnum)
 	listenfd = Open_listenfd(*port);
 	struct sockaddr_in clientaddr;
 	request_buffer *tmp_buf  = (request_buffer *) malloc(buffers * sizeof(request_buffer));
+	
 	for (;;)
 	{
 		// Hold locks for the shortest time possible.
@@ -215,33 +217,26 @@ void *producer(void *portnum)
 		connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
 		tmp_buf->connfd = connfd;
 		prepRequest(tmp_buf);
-		// No point hanging on to this connection if it's broken
-		// if(connfd <= 0 || !valid_fd(connfd)) continue;
+
 		pthread_mutex_lock(&m);
 		while (numitems == buffers){
 			pthread_cond_wait(&empty, &m);
 		}
 		rearIndex = numitems;
 		numitems++;
-		buffer[rearIndex].filesize = tmp_buf->filesize ;
 		buffer[rearIndex].connfd = tmp_buf->connfd;
-		buffer[rearIndex].is_static = tmp_buf->is_static;
-		strcpy(buffer[rearIndex].buf, tmp_buf->buf);
-		strcpy(buffer[rearIndex].method, tmp_buf->method);
-		strcpy(buffer[rearIndex].uri, tmp_buf->uri);
-		strcpy(buffer[rearIndex].version, tmp_buf->version);
 		strcpy(buffer[rearIndex].filename, tmp_buf->filename);
-		strcpy(buffer[rearIndex].cgiargs, tmp_buf->cgiargs);
-		buffer[rearIndex].sbuf = tmp_buf->sbuf;
+		buffer[rearIndex].filesize = tmp_buf->filesize;
+		strcpy(buffer[rearIndex].buf, tmp_buf->buf);
 		buffer[rearIndex].rio = tmp_buf->rio;
-		if(numitems > 1){
+		// if(numitems > 1){
 			if(SFNF){
 				qsort(buffer, numitems, sizeof(request_buffer), sfnfCompareKeys);
-			} else {
+			} else { // SFF
 				qsort(buffer, numitems, sizeof(request_buffer), sffCompareKeys);
 			}
-		}
-		pthread_cond_broadcast(&fill);
+		// }
+		pthread_cond_signal(&fill);
 		pthread_mutex_unlock(&m);
 	}
 }
@@ -256,16 +251,9 @@ void *consumer()
 			pthread_cond_wait(&fill, &m);
 		}
 		numitems--;
-		tmp_buf->filesize = buffer[numitems].filesize;
-		tmp_buf->connfd = buffer[numitems].connfd;
-		tmp_buf->is_static = buffer[numitems].is_static;
 		strcpy(tmp_buf->buf, buffer[numitems].buf);
-		strcpy(tmp_buf->method, buffer[numitems].method);
-		strcpy(tmp_buf->uri, buffer[numitems].uri);
-		strcpy(tmp_buf->version, buffer[numitems].version);
 		strcpy(tmp_buf->filename, buffer[numitems].filename);
-		strcpy(tmp_buf->cgiargs, buffer[numitems].cgiargs);
-		tmp_buf->sbuf = buffer[numitems].sbuf;
+		tmp_buf->connfd = buffer[numitems].connfd;
 		tmp_buf->rio = buffer[numitems].rio;
 		pthread_cond_signal(&empty);
 		pthread_mutex_unlock(&m);

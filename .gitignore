@@ -104,3 +104,7 @@ runtests.log
 /p4/linux/output.cgi.dSYM/Contents/Resources/DWARF/1.cgi
 
 /p4/linux/output.cgi.dSYM/Contents/Resources/DWARF/in
+
+/p4/linux/request-orig.c
+
+/p4/linux/server-orig.c

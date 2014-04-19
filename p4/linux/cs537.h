@@ -60,17 +60,10 @@ extern char **environ; /* defined by libc */
 /* To keep track of client requests in the buffer */
 /* $begin request_buffer */
 typedef struct {
-  // int fifo;
   int filesize; // in bytes
   int connfd; // connection file descriptor
-  int is_static;
   char buf[MAXLINE];
-  char method[MAXLINE];
-  char uri[MAXLINE];
-  char version[MAXLINE];
   char filename[MAXLINE];
-  char cgiargs[MAXLINE];
-  struct stat sbuf;
   rio_t rio;
 } request_buffer;
 /* $end request_buffer */
