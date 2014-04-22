@@ -122,7 +122,7 @@ thread_create(void(*start_routine)(void*), void* arg)
 int
 thread_join() 
 {
-  void* join_stack;
+  void* join_stack = (uint*)PGSIZE;
   /* lock_acquire(&threadLock); */
 
   int ppid = join(&join_stack);
