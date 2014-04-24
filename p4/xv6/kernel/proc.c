@@ -109,6 +109,26 @@ growproc(int n)
   uint sz;
   
   sz = proc->sz;
+
+  /* acquire(&ptable.lock); */
+  pde_t* savedPageDir = proc->pgdir;
+  /* uint stackDiff[NPROC]; */
+  /* uint ebpDiff[NPROC]; */
+  /* int i = 0; */
+  /* struct proc* p; */
+  
+  /* for(p = ptable.proc; p < &ptable.proc[NPROC]; p++, i++){ */
+  /*   if(p->parent == proc){ */
+  /*     if (p->pgdir == savedPageDir) { */
+  /*       stackDiff[i] = p->tf->esp - proc->tf->esp; */
+  /*       ebpDiff[i]   = p->tf->ebp - proc->tf->ebp; */
+  /*     } */
+  /*   } */
+  /* } */
+
+  /* release(&ptable.lock); */
+  
+
   if(n > 0){
     if((sz = allocuvm(proc->pgdir, sz, sz + n)) == 0)
       return -1;
@@ -117,7 +137,24 @@ growproc(int n)
       return -1;
   }
   proc->sz = sz;
+
   switchuvm(proc);
+  
+  acquire(&ptable.lock);
+
+  struct proc* p;
+  /* i = 0; */
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->parent == proc){
+      if (p->pgdir == savedPageDir) {
+        p->sz = sz;
+        switchuvm(p);
+      }
+    }
+  }
+
+  release(&ptable.lock);
+
   return 0;
 }
 
