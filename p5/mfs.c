@@ -25,7 +25,6 @@ MFS_Init(char *hostname, int port){
   // Once a socket is filled it can be re-used over & over
   rc = UDP_FillSockAddr(&saddr, hostname, port);
   assert(rc == 0);
-
   struct msg_r m;
   m.method = M_Init;
 
@@ -42,18 +41,19 @@ MFS_Init(char *hostname, int port){
   t.tv_usec = 0; // microseconds
 
   rc = select(sd + 1, &r, NULL, NULL, &t);
-  printf("Select() returned: %d\n", rc);
-  // int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
 
   if (rc > 0) {
     rc = UDP_Read(sd, &raddr, (char *) &m, sizeof(struct msg_r)); // This blocks
-    // printf("CLIENT:: read %d bytes (message: '%s')\n", rc, m.type);
     printf("CLIENT:: read %d bytes (message: '%s')\n", rc, m.buffer);
+    if(strcmp("M_Init", m.buffer) == 0){ 
+      return 0;
+    } else {
+      return -1;
+    }
   } else {
     printf("CLIENT:: TIMED OUT\n");
+    return -1;
   }
-
-  return 0;
 }
 
 /**

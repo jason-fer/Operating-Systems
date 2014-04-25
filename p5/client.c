@@ -6,5 +6,6 @@
 int
 main(int argc, char *argv[])
 {
-	MFS_Init("localhost", 10000);
+	int response = MFS_Init("localhost", 10000);
+  assert(response >= 0);
 }
