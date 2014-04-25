@@ -5,7 +5,7 @@
 
 char *name = "tempfile";
 int pinum, type, inum, block, response;
-char *buffer;
+char buffer[4096];
 MFS_Stat_t *my_dir;
 MFS_Stat_t *my_file;
 
@@ -65,15 +65,15 @@ int main(int argc, char *argv[]){
   // generic values (to make the compiler happy)
   my_dir = malloc(sizeof(*my_dir));
   my_file = malloc(sizeof(*my_file));
-  my_dir->type = 0;
+  my_dir->type = MFS_DIRECTORY;
   my_dir->size = 64;
-  my_file->type = 1;
+  my_file->type = MFS_DIRECTORY;
   my_file->size = 64;
   pinum = 1;
   type = 1;
   inum = 1;
   block = 1;
-  buffer = strdup("An awesome message.");
+  sprintf(buffer, "An awesome message");
 
   // Confirm the server sends a success response in each case
   test_init();

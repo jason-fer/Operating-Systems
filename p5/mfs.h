@@ -39,7 +39,7 @@ struct msg_r {
   int pinum, inum, block, type;
   char buffer[4096];
   char reply[16];
-  MFS_Stat_t m;
+  MFS_Stat_t mfs_stat;
 };
 
 int MFS_Init(char *hostname, int port);

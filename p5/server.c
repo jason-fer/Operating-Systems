@@ -20,8 +20,9 @@ void getargs(int *port, char **filename, int argc, char *argv[]){
 	// printf("file image name: %s\n", *filename);
 }
 
-int srv_Init(char *hostname, int port){
-	// @todo: write this method
+int srv_Init(){
+	// Does this method really need to do anything? I'm thinking no....
+	printf("SERVER:: you called MFS_Init\n");
 	return 0;
 }
 
@@ -33,6 +34,7 @@ int srv_Init(char *hostname, int port){
  */
 int srv_Lookup(int pinum, char *name){
 	// @todo: write this method
+	printf("SERVER:: you called MFS_Lookup\n");
 	return 0;
 }
 
@@ -43,6 +45,7 @@ int srv_Lookup(int pinum, char *name){
  */
 int srv_Stat(int inum, MFS_Stat_t *m){
 	// @todo: write this method
+	printf("SERVER:: you called MFS_Stat\n");
 	return 0;
 }
 
@@ -53,6 +56,7 @@ int srv_Stat(int inum, MFS_Stat_t *m){
  */
 int srv_Write(int inum, char *buffer, int block){
 	// @todo: write this method
+	printf("SERVER:: you called MFS_Write\n");
 	return 0;
 } 
 
@@ -64,6 +68,7 @@ int srv_Write(int inum, char *buffer, int block){
  */
 int srv_Read(int inum, char *buffer, int block){
 	// @todo: write this method
+	printf("SERVER:: you called MFS_Read\n");
 	return 0;
 }
 
@@ -75,6 +80,7 @@ int srv_Read(int inum, char *buffer, int block){
  */
 int srv_Creat(int pinum, int type, char *name){
 	// @todo: write this method
+	printf("SERVER:: you called MFS_Creat\n");
 	return 0;
 }
 
@@ -87,6 +93,7 @@ int srv_Creat(int pinum, int type, char *name){
  */
 int srv_Unlink(int pinum, char *name){
 	// @todo: write this method
+	printf("SERVER:: you called MFS_Unlink\n");
 	return 0;
 }
 
@@ -95,50 +102,49 @@ int srv_Unlink(int pinum, char *name){
  * shutdown by calling exit(0). This interface will mostly be used for testing 
  * purposes.
  */
-int srv_Shutdown(){
-	// @todo: write this method
-	return 0;
+int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
+	// Notify client we are shutting down; this is the only method completely 
+	// tied to a client call.
+	rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r));
+	// @todo: we probably need to call fsync (or an equivalent) before exit!
+	printf("SERVER:: you called MFS_Shutdown\n");
+	exit(0);
 }
 
 int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
-	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
-	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
-	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
-	// printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
 
-  // strcmp("M_Init", m.buffer) == 0
 	switch(m.method){
 		case M_Init:
-		 printf("SERVER:: you called MFS_Init\n");
 		 sprintf(m.reply, "MFS_Init");
+		 srv_Init();
 		 break;
 		case M_Lookup:
-		 printf("SERVER:: you called MFS_Lookup\n");
 		 sprintf(m.reply, "MFS_Lookup");
+		 srv_Lookup(m.pinum, m.name);
 		 break;
 		case M_Stat:
-		 printf("SERVER:: you called MFS_Stat\n");
 		 sprintf(m.reply, "MFS_Stat");
+		 srv_Stat(m.inum, &m.mfs_stat);
 		 break;
 		case M_Write:
-		 printf("SERVER:: you called MFS_Write\n");
 		 sprintf(m.reply, "MFS_Write");
+		 srv_Write(m.inum, m.buffer, m.block);
 		 break;
 		case M_Read:
-		 printf("SERVER:: you called MFS_Read\n");
 		 sprintf(m.reply, "MFS_Read");
+		 srv_Read(m.inum, m.buffer, m.block);
 		 break;
 		case M_Creat:
-		 printf("SERVER:: you called MFS_Creat\n");
 		 sprintf(m.reply, "MFS_Creat");
+		 srv_Creat(m.pinum, m.type, m.name);
 		 break;
 		case M_Unlink:
-		 printf("SERVER:: you called MFS_Unlink\n");
 		 sprintf(m.reply, "MFS_Unlink");
+		 srv_Unlink(m.pinum, m.name);
 		 break;
 		case M_Shutdown:
-		 printf("SERVER:: you called MFS_Shutdown\n");
 		 sprintf(m.reply, "MFS_Shutdown");
+		 srv_Shutdown(rc, sd, s, m);
 		 break;
 		default:
 		 printf("SERVER:: method does not exist\n");
@@ -150,10 +156,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 	return UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r));
 }
 
-/**
- * E.g. usage: ./server 10000 tempfile
- */
-int main(int argc, char *argv[]){
+void start_server(int argc, char *argv[]){
 	int sd, port;
 	char *filename; //@todo: implement filename
 	
@@ -169,8 +172,23 @@ int main(int argc, char *argv[]){
 		int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
 		if (rc > 0) {
 			rc = call_rpc_func(rc, sd, s, m);
+			// printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
 		}
 	}
+}
+
+/**
+ * E.g. usage: ./server 10000 tempfile
+ */
+int main(int argc, char *argv[]){
+
+	// Disable this to test methods without running the server...
+	start_server(argc, argv);
+
+	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
+	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
+	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
+
 
 	return 0;
 }
