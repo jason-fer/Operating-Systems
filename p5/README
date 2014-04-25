@@ -17,8 +17,3 @@ mfsput: takes a filename as input, and create a file in your MFS file system
 based on that file
 
 mfscat: dumps the contents of a file in MFS to the screen
-
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-Makefile: I don't think I'm using the libmfs.so correctly / as expected.
-  -Jason
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
