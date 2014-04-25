@@ -2,18 +2,6 @@
 #include "udp.h"
 #include "mfs.h"
 
-#define BUFFER_SIZE (4096)
-// The server will need to decode the struct we send over & interpret the 
-// following commands:
-// int MFS_Init(char *hostname, int port);
-// int MFS_Lookup(int pinum, char *name);
-// int MFS_Stat(int inum, MFS_Stat_t *m);
-// int MFS_Write(int inum, char *buffer, int block);
-// int MFS_Read(int inum, char *buffer, int block);
-// int MFS_Creat(int pinum, int type, char *name);
-// int MFS_Unlink(int pinum, char *name);
-// int MFS_Shutdown();
-
 /**
  * portnum: the port number that the file server should listen on.
  * file-system-image: a file that contains the file system image.
@@ -51,13 +39,11 @@ main(int argc, char *argv[])
 
 	while (1) {
 		struct sockaddr_in s;
-		char buffer[BUFFER_SIZE];
-		int rc = UDP_Read(sd, &s, buffer, BUFFER_SIZE);
+		struct msg_r m;
+		int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
 		if (rc > 0) {
-			printf("SERVER:: read %d bytes (message: '%s')\n", rc, buffer);
-			char reply[BUFFER_SIZE];
-			sprintf(reply, "reply");
-			rc = UDP_Write(sd, &s, reply, BUFFER_SIZE);
+			printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
+			rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r));
 			}
 	}
 
@@ -65,3 +51,6 @@ main(int argc, char *argv[])
 }
 
 // To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
+
+// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
+// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
