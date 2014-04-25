@@ -1,5 +1,5 @@
 CC   = gcc
-OPTS = -Wall
+OPTS = -Wall -Werror
 
 all: server client
 
@@ -15,7 +15,4 @@ client: client.o udp.o
 	$(CC) $(OPTS) -c $< -o $@
 
 clean:
-	rm -f server.o udp.o client.o server client
-
-
-
+	rm -f server.o udp.o client.o server client libmfs.so
