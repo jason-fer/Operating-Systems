@@ -2,9 +2,7 @@
 
 // create a socket and bind it to a port on the current machine
 // used to listen for incoming packets
-int
-UDP_Open(int port)
-{
+int UDP_Open(int port){
 	int fd;
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 	perror("socket");
@@ -30,9 +28,7 @@ UDP_Open(int port)
 }
 
 // fill sockaddr_in struct with proper goodies
-int
-UDP_FillSockAddr(struct sockaddr_in *addr, char *hostName, int port)
-{
+int UDP_FillSockAddr(struct sockaddr_in *addr, char *hostName, int port){
 	bzero(addr, sizeof(struct sockaddr_in));
 	if (hostName == NULL) {
 	return 0; // it's OK just to clear the address
@@ -54,17 +50,13 @@ UDP_FillSockAddr(struct sockaddr_in *addr, char *hostName, int port)
 	return 0;
 }
 
-int
-UDP_Write(int fd, struct sockaddr_in *addr, char *buffer, int n)
-{
+int UDP_Write(int fd, struct sockaddr_in *addr, char *buffer, int n){
 	int addrLen = sizeof(struct sockaddr_in);
 	int rc      = sendto(fd, buffer, n, 0, (struct sockaddr *) addr, addrLen);
 	return rc;
 }
 
-int
-UDP_Read(int fd, struct sockaddr_in *addr, char *buffer, int n)
-{
+int UDP_Read(int fd, struct sockaddr_in *addr, char *buffer, int n){
 	int len = sizeof(struct sockaddr_in); 
 	int rc = recvfrom(fd, buffer, n, 0, (struct sockaddr *) addr, (socklen_t *) &len);
 	// assert(len == sizeof(struct sockaddr_in)); 
@@ -72,9 +64,7 @@ UDP_Read(int fd, struct sockaddr_in *addr, char *buffer, int n)
 }
 
 
-int
-UDP_Close(int fd)
-{
+int UDP_Close(int fd){
 	return close(fd);
 }
 

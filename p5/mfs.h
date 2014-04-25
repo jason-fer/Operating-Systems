@@ -22,14 +22,23 @@ typedef struct __MFS_DirEnt_t {
 } MFS_DirEnt_t;
 
 // For the RPC stub client send & server recieve methods 
-enum methods { M_Init, M_Lookup, M_Stat, M_Write, M_Read, M_Creat,
-  M_Unlink, M_Shutdown } ;
+enum methods { 
+  M_Init,
+  M_Lookup,
+  M_Stat,
+  M_Write,
+  M_Read,
+  M_Creat,
+  M_Unlink,
+  M_Shutdown
+};
 
 struct msg_r {
   enum methods method;
   char *name;
   int pinum, inum, block, type;
   char buffer[4096];
+  char reply[16];
   MFS_Stat_t m;
 };
 
