@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "udp.h"
+#include "mfs.h"
 
 #define BUFFER_SIZE (4096)
 char buffer[BUFFER_SIZE];
@@ -12,7 +13,8 @@ main(int argc, char *argv[])
 
 	struct sockaddr_in saddr;
 	// Once we UDP_FillSockAddr, we can use the socket over & over
-	int rc = UDP_FillSockAddr(&saddr, "claudio.cs.wisc.edu", 10000);
+	// int rc = UDP_FillSockAddr(&saddr, "claudio.cs.wisc.edu", 10000);
+	int rc = UDP_FillSockAddr(&saddr, "localhost", 10000);
 	assert(rc == 0);
 
 	printf("CLIENT:: about to send message (%d)\n", rc);
