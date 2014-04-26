@@ -63,7 +63,7 @@ int srv_Lookup(int pinum, char *name) {
     return -1;
   }
 
-  lseek(fd, imapPieceIdx + 4, SEEK_SET);
+  lseek(fd, ((imapPieceIdx*4) + 4), SEEK_SET);
   
   int locationToPiece = 0;
   if (read(fd, &locationToPiece, 4) < 0) {
@@ -72,7 +72,8 @@ int srv_Lookup(int pinum, char *name) {
 
   int iNodeMapIdx = pinum%16;
   // Each imapIdx is of 4 bytes, so multiplying by 4
-  lseek(fd, locationToPiece + (iNodeMapIdx*4), SEEK_CUR);
+  lseek(fd, locationToPiece + (iNodeMapIdx*4), SEEK_SET);
+  
   printf ("rc value %d\n",rc);
   printf ("size val %lu\n",sizeof(int));
   printf ("checkPointVal %d\n", checkPointVal);
@@ -89,15 +90,12 @@ int srv_Lookup(int pinum, char *name) {
     return -1;
   }
 
-  /* printf ("rc value %d\n",rc); */
-  /* printf ("size val %lu\n",sizeof(int)); */
-  /* printf ("checkPointVal %d\n", checkPointVal); */
-  /* printf ("location %d\n", location); */
+  printf ("rc value %d\n",rc);
+  printf ("location %d\n", location);
 
-  lseek(fd, 0, SEEK_SET);
   lseek(fd, (location), SEEK_SET);
 		
-  Inode_t* dirIMap = NULL;
+  Inode_t* dirIMap = malloc(sizeof(Inode_t));
   if (read(fd, dirIMap, sizeof(Inode_t)) < 0) {
     return -1;
   }
