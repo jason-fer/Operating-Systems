@@ -97,12 +97,19 @@ int srv_Lookup(int pinum, char *name) {
 		
   Inode_t* dirIMap = malloc(sizeof(Inode_t));
   if (read(fd, dirIMap, sizeof(Inode_t)) < 0) {
+    free(dirIMap);
+    dirIMap = NULL;
     return -1;
   }
 
   if (dirIMap->type != MFS_DIRECTORY) {
+    free(dirIMap);
+    dirIMap = NULL;
     return -1;
   }
+
+  free(dirIMap);
+  dirIMap = NULL;
 		
   int iNodePtr = -1;
   int i = 0;
