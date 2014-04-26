@@ -263,7 +263,7 @@ void start_server(int argc, char *argv[]){
 int main(int argc, char *argv[]){
 
 	// Disable this to test methods without running the server...
-	start_server(argc, argv);
+	// start_server(argc, argv);
 
 	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
 	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
