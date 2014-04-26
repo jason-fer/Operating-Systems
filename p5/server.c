@@ -26,6 +26,46 @@ void getargs(int *port, int argc, char *argv[]){
 	// printf("file image name: %s\n", *filename);
 }
 
+int get_inode_location(int inum) {
+  int imapPieceIdx = inum/16;
+  lseek(fd, 0, SEEK_SET);
+
+  int checkPointVal = 0;
+  int rc = read(fd, &checkPointVal, sizeof(int));
+  if (rc < 0) {
+    return -1;
+  }
+
+  lseek(fd, ((imapPieceIdx*4) + 4), SEEK_SET);
+  
+  int locationToPiece = 0;
+  if (read(fd, &locationToPiece, 4) < 0) {
+    return -1;
+  }
+
+  int iNodeMapIdx = inum%16;
+  // Each imapIdx is of 4 bytes, so multiplying by 4
+  lseek(fd, locationToPiece + (iNodeMapIdx*4), SEEK_SET);
+  
+  // printf ("rc value %d\n",rc);
+  // printf ("size val %lu\n",sizeof(int));
+  // printf ("checkPointVal %d\n", checkPointVal);
+  // printf ("locationToPiece %d\n", locationToPiece);
+  
+  int location = 0;
+		
+  rc = read(fd, &location, sizeof(int));
+  if (rc < 0) {
+    return -1;
+  }
+
+  if (location > checkPointVal) {
+    return -1;
+  }
+
+  return location;
+}
+
 int srv_Init(){
 	// Does this method really need to do anything? I'm thinking no....
 	printf("SERVER:: you called MFS_Init\n");
@@ -54,44 +94,14 @@ int srv_Lookup(int pinum, char *name) {
     return -1;
   }
 
-  int imapPieceIdx = pinum/16;
-  lseek(fd, 0, SEEK_SET);
 
-  int checkPointVal = 0;
-  int rc = read(fd, &checkPointVal, sizeof(int));
-  if (rc < 0) {
-    return -1;
+  int location = get_inode_location(pinum);
+
+  if (location < 0) {
+      return -1;
   }
-
-  lseek(fd, ((imapPieceIdx*4) + 4), SEEK_SET);
-  
-  int locationToPiece = 0;
-  if (read(fd, &locationToPiece, 4) < 0) {
-    return -1;
-  }
-
-  int iNodeMapIdx = pinum%16;
-  // Each imapIdx is of 4 bytes, so multiplying by 4
-  lseek(fd, locationToPiece + (iNodeMapIdx*4), SEEK_SET);
-  
-  printf ("rc value %d\n",rc);
-  printf ("size val %lu\n",sizeof(int));
-  printf ("checkPointVal %d\n", checkPointVal);
-  printf ("locationToPiece %d\n", locationToPiece);
-  
-  int location = 0;
-		
-  rc = read(fd, &location, sizeof(int));
-  if (rc < 0) {
-    return -1;
-  }
-
-  if (location > checkPointVal) {
-    return -1;
-  }
-
-  printf ("rc value %d\n",rc);
-  printf ("location %d\n", location);
+  // printf ("rc value %d\n",rc);
+  // printf ("location %d\n", location);
 
   lseek(fd, (location), SEEK_SET);
 		
@@ -127,7 +137,7 @@ int srv_Lookup(int pinum, char *name) {
       continue;
     }
 
-    printf ("iNode Ptr = %d\n",iNodePtr);
+    // printf ("iNode Ptr = %d\n",iNodePtr);
 
     lseek(fd, (iNodePtr), SEEK_SET);
  
@@ -142,8 +152,8 @@ int srv_Lookup(int pinum, char *name) {
         continue;
       } 
       
-      printf ("dirEntry.inum %d\n", dirEntry.inum);
-      printf ("dirEntry.name %s\n", dirEntry.name);
+      // printf ("dirEntry.inum %d\n", dirEntry.inum);
+      // printf ("dirEntry.name %s\n", dirEntry.name);
 
       if (strcmp(dirEntry.name, name) == 0) {
         return dirEntry.inum;
@@ -153,6 +163,23 @@ int srv_Lookup(int pinum, char *name) {
   } 
 
   return -1;
+}
+
+/**
+ * Reads a block specified by block into the buffer from file specified by inum.
+ * The routine should work for either a file or directory; directories should 
+ * return data in the format specified by MFS_DirEnt_t. Success: 0, failure: -1.
+ * Failure modes: invalid inum, invalid block.
+ */
+int srv_Read(int inum, char *buffer, int block){
+	printf("SERVER:: you called MFS_Read\n");
+    
+    int location = get_inode_location(inum);
+    
+    lseek(fd, location, SEEK_SET);
+
+    /* if ( read(fd, )) */
+	return 0;
 }
 
 /**
@@ -177,18 +204,6 @@ int srv_Write(int inum, char *buffer, int block){
 	return 0;
 } 
 
-/**
- * Reads a block specified by block into the buffer from file specified by inum.
- * The routine should work for either a file or directory; directories should 
- * return data in the format specified by MFS_DirEnt_t. Success: 0, failure: -1.
- * Failure modes: invalid inum, invalid block.
- */
-int srv_Read(int inum, char *buffer, int block){
-	// @todo: write this method
-	printf("SERVER:: you called MFS_Read\n");
-
-	return 0;
-}
 
 /**
  * Makes a file (type == MFS_REGULAR_FILE) or directory (type == MFS_DIRECTORY) 
@@ -327,6 +342,8 @@ int main(int argc, char *argv[]){
 	printf("/code is inum: %d\n", inum); // we expect 2
 	inum = srv_Lookup(0, "it's");
 	printf("/it's is inum: %d\n", inum); // we expect 6
+	inum = srv_Lookup(2, "helloworld.c");
+	printf("/helloworld is inum: %d\n", inum); // we expect 6
 	fs_Shutdown();
 
 	return 0;
