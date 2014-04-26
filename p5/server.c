@@ -269,6 +269,13 @@ int main(int argc, char *argv[]){
 	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
 
+	// Can we find the base dir?
+	int inum = srv_Lookup(0, "dir");
+	printf("/dir is inum: %d\n", inum); // we expect 1
+	inum = srv_Lookup(0, "code");
+	printf("/code is inum: %d\n", inum); // we expect 2
+	inum = srv_Lookup(0, "it's");
+	printf("/it's is inum: %d\n", inum); // we expect 6
 
 	return 0;
 }
