@@ -1,6 +1,12 @@
 #include <stdio.h>
 #include "udp.h"
 #include "mfs.h"
+#include <sys/types.h>
+#include <unistd.h>
+
+char* filename;
+int* port;
+int fd = 0;
 
 /**
  * portnum: the port number that the file server should listen on.
@@ -8,14 +14,14 @@
  * If the file system image does not exist, you should create it and properly 
  * initialize it to include an empty root directory.
  */
-void getargs(int *port, char **filename, int argc, char *argv[]){
+void getargs(int *port, int argc, char *argv[]){
 	if (argc != 3){
 		// prompt> server [portnum] [file-system-image]
 		fprintf(stderr, "Usage: %s [portnum] [file-system-image]\n", argv[0]);
 		exit(1);
 	}
 	*port = atoi(argv[1]);
-	*filename = strdup(argv[2]);
+	filename = strdup(argv[2]);
 	// printf("port: %d\n", *port);
 	// printf("file image name: %s\n", *filename);
 }
@@ -23,6 +29,14 @@ void getargs(int *port, char **filename, int argc, char *argv[]){
 int srv_Init(){
 	// Does this method really need to do anything? I'm thinking no....
 	printf("SERVER:: you called MFS_Init\n");
+    fd = open(filename, O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
+    
+    if (fd < 0) {
+      char error_message[30] = "An error has occurred\n";
+      write(STDERR_FILENO, error_message, strlen(error_message));
+      exit(1);
+    }
+
 	return 0;
 }
 
@@ -35,7 +49,71 @@ int srv_Init(){
 int srv_Lookup(int pinum, char *name){
 	// @todo: write this method
 	printf("SERVER:: you called MFS_Lookup\n");
-	return 0;
+    if (pinum < 0 || pinum >= MFS_BLOCK_SIZE) {
+      return -1;
+    }
+
+    int imapIdx = pinum/16;
+    lseek(fd, 0, SEEK_SET);
+
+    int* checkPointVal;
+    read(fd, (void*)checkPointVal, 4);
+
+    // Setting it to (end - 16384) bytes
+    // 16384 bytes as 256*64
+    // 256 is number of IMap entries
+    // 64 is the size of each I map
+    lseek(fd, (*checkPointVal) + imapIdx -16384, SEEK_SET);
+    
+    int iNodeMapIdx = pinum%16;
+    // Each imapIdx is of 4 bytes, so multiplying by 4
+    lseek(fd, (iNodeMapIdx*4), SEEK_CUR);
+    
+    int* location;
+    
+    if (read(fd, (void*)location, 4) < 0) {
+      return -1;
+    } 
+
+    if (*location > *checkPointVal) {
+      return -1;
+    }
+
+    lseek(fd, 0, SEEK_SET);
+    lseek(fd, (*location), SEEK_SET);
+    
+    MFS_Stat_t* dirIMap;
+    if (read(fd, (void*)dirIMap, sizeof(MFS_Stat_t)) < 0) {
+      return -1;
+    }  
+
+    if (dirIMap->type != MFS_DIRECTORY) {
+      return -1;
+    }
+    
+    int* iNodePtrs[14];
+    int i = 0;
+    if (read(fd, (void*)iNodePtrs, 14*sizeof(int*)) < 0) {
+      return -1;
+    }
+
+    MFS_DirEnt_t* dirEntry;
+    for (; i < 14; ++i) {
+      lseek(fd, *(iNodePtrs[i]), SEEK_SET);
+
+      if (read(fd, (void*)dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+        return -1;
+      }
+
+      if (dirEntry->inum == -1) {
+        continue;
+      }
+      
+      if (strcmp(dirEntry->name, name) == 0) {
+        return dirEntry->inum;
+      }
+    }
+    return -1;
 }
 
 /**
@@ -158,9 +236,8 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 
 void start_server(int argc, char *argv[]){
 	int sd, port;
-	char *filename; //@todo: implement filename
 	
-	getargs(&port, &filename, argc, argv);
+	getargs(&port, argc, argv);
 	sd = UDP_Open(port);
 	assert(sd > -1);
 
