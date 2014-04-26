@@ -8,6 +8,25 @@ char* filename = "example.img";
 int* port;
 int fd = 0;
 
+/*
+// The inode map is just an array, indexed by inode number. Each entry is a simple 
+// 4-byte integer, which is just the disk address of the location of the inode
+int inode_map[16];
+
+// Each inode should be simple: a size field (the number of the last byte in the 
+// file), a type field (regular or directory), and 14 direct pointers; thus, the 
+// maximum file size is 14 times the 4KB block size, or 56 KB.
+struct inode {
+	int size; // The number of the last byte in the file
+	int type; // MFS_DIRECTORY (0) or MFS_REGULAR_FILE (1)
+// };
+
+// What is the size of the Critical region?
+Disk Image File / Sequence of Bytes
+CR | D | I | M <—layout like LFS, log structured file system
+CR —> map piece —> inode —> data
+*/
+
 /**
  * portnum: the port number that the file server should listen on.
  * file-system-image: a file that contains the file system image.
@@ -30,7 +49,9 @@ int srv_Init(){
 	// Does this method really need to do anything? I'm thinking no....
 	printf("SERVER:: you called MFS_Init\n");
 
-	fd = open(filename, O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
+	// fd = open(filename, O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
+	// we must be careful with example.img...
+	fd = open(filename, O_RDONLY);
 
 	if (fd < 0) {
 		char error_message[30] = "An error has occurred\n";
@@ -50,71 +71,75 @@ int srv_Init(){
 int srv_Lookup(int pinum, char *name){
 	// @todo: write this method
 	printf("SERVER:: you called MFS_Lookup\n");
-		if (pinum < 0 || pinum >= MFS_BLOCK_SIZE) {
-			return -1;
-		}
-
-		int imapIdx = pinum/16;
-		lseek(fd, 0, SEEK_SET);
-
-		int* checkPointVal;
-		read(fd, (void*)checkPointVal, 4);
-
-		// Setting it to (end - 16384) bytes
-		// 16384 bytes as 256*64
-		// 256 is number of IMap entries
-		// 64 is the size of each I map
-		lseek(fd, (*checkPointVal) + imapIdx -16384, SEEK_SET);
-		
-		int iNodeMapIdx = pinum%16;
-		// Each imapIdx is of 4 bytes, so multiplying by 4
-		lseek(fd, (iNodeMapIdx*4), SEEK_CUR);
-		
-		int* location;
-		
-		if (read(fd, (void*)location, 4) < 0) {
-			return -1;
-		} 
-
-		if (*location > *checkPointVal) {
-			return -1;
-		}
-
-		lseek(fd, 0, SEEK_SET);
-		lseek(fd, (*location), SEEK_SET);
-		
-		MFS_Stat_t* dirIMap;
-		if (read(fd, (void*)dirIMap, sizeof(MFS_Stat_t)) < 0) {
-			return -1;
-		}  
-
-		if (dirIMap->type != MFS_DIRECTORY) {
-			return -1;
-		}
-		
-		int* iNodePtrs[14];
-		int i = 0;
-		if (read(fd, (void*)iNodePtrs, 14*sizeof(int*)) < 0) {
-			return -1;
-		}
-
-		MFS_DirEnt_t* dirEntry;
-		for (; i < 14; ++i) {
-			lseek(fd, *(iNodePtrs[i]), SEEK_SET);
-
-			if (read(fd, (void*)dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
-				return -1;
-			}
-
-			if (dirEntry->inum == -1) {
-				continue;
-			}
-			
-			if (strcmp(dirEntry->name, name) == 0) {
-				return dirEntry->inum;
-			}
-		}
+	if (pinum < 0 || pinum >= MFS_BLOCK_SIZE) {
 		return -1;
+	}
+
+	int imapIdx = pinum/16;
+	// printf("imapIdx %d\n", imapIdx);
+	lseek(fd, 0, SEEK_SET);
+
+	int* checkPointVal = NULL;
+	int rs = read(fd, (void*)checkPointVal, sizeof(int*));
+	printf("rs: %d, fd:%d, checkPointVal:%d, sizeof:%d \n", rs, fd, (int) checkPointVal, (int) sizeof(int*));
+	printf("Read result! %d\n", rs);
+	printf("checkPointVal: %d\n", *checkPointVal);
+
+	// Setting it to (end - 16384) byte
+	// 16384 bytes as 256*64
+	// 256 is number of IMap entries
+	// 64 is the size of each I map
+	lseek(fd, (*checkPointVal) + imapIdx -16384, SEEK_SET);
+	
+	int iNodeMapIdx = pinum%16;
+	// Each imapIdx is of 4 bytes, so multiplying by 4
+	lseek(fd, (iNodeMapIdx*4), SEEK_CUR);
+	
+	int* location;
+	
+	if (read(fd, (void*)location, 4) < 0) {
+		return -1;
+	} 
+
+	if (*location > *checkPointVal) {
+		return -1;
+	}
+
+	lseek(fd, 0, SEEK_SET);
+	lseek(fd, (*location), SEEK_SET);
+	
+	MFS_Stat_t* dirIMap;
+	if (read(fd, (void*)dirIMap, sizeof(MFS_Stat_t)) < 0) {
+		return -1;
+	}  
+
+	if (dirIMap->type != MFS_DIRECTORY) {
+		return -1;
+	}
+	
+	int* iNodePtrs[14];
+	int i = 0;
+	if (read(fd, (void*)iNodePtrs, 14*sizeof(int*)) < 0) {
+		return -1;
+	}
+
+	MFS_DirEnt_t* dirEntry;
+	for (; i < 14; ++i) {
+		lseek(fd, *(iNodePtrs[i]), SEEK_SET);
+
+		if (read(fd, (void*)dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+			return -1;
+		}
+
+		if (dirEntry->inum == -1) {
+			continue;
+		}
+		
+		if (strcmp(dirEntry->name, name) == 0) {
+			return dirEntry->inum;
+		}
+	}
+	return -1;
 }
 
 /**
@@ -276,17 +301,18 @@ int main(int argc, char *argv[]){
 	// Disable this to test methods without running the server...
 	// start_server(argc, argv);
 
-	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
 	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
 
 	srv_Init();
-	// Can we find the base dir?
-	int inum = srv_Lookup(0, "dir");
+	int inum = srv_Lookup(0, "dir/");
 	printf("/dir is inum: %d\n", inum); // we expect 1
+	assert(inum >= 0);
 	inum = srv_Lookup(0, "code");
+	assert(inum >= 0);
 	printf("/code is inum: %d\n", inum); // we expect 2
 	inum = srv_Lookup(0, "it's");
+	assert(inum >= 0);
 	printf("/it's is inum: %d\n", inum); // we expect 6
 	fs_Shutdown();
 
