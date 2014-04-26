@@ -79,34 +79,34 @@ int srv_Lookup(int pinum, char *name){
 	// printf("imapIdx %d\n", imapIdx);
 	lseek(fd, 0, SEEK_SET);
 
-	int* checkPointVal = NULL;
-	int rs = read(fd, (void*)checkPointVal, sizeof(int*));
+	int checkPointVal = 0;
+	int rs = read(fd, &checkPointVal, sizeof(int));
 	printf("rs: %d, fd:%d, checkPointVal:%d, sizeof:%d \n", rs, fd, (int) checkPointVal, (int) sizeof(int*));
 	printf("Read result! %d\n", rs);
-	printf("checkPointVal: %d\n", *checkPointVal);
+	printf("checkPointVal: %d\n", checkPointVal);
 
 	// Setting it to (end - 16384) byte
 	// 16384 bytes as 256*64
 	// 256 is number of IMap entries
 	// 64 is the size of each I map
-	lseek(fd, (*checkPointVal) + imapIdx -16384, SEEK_SET);
+	lseek(fd, (checkPointVal) + imapIdx -16384, SEEK_SET);
 	
 	int iNodeMapIdx = pinum%16;
 	// Each imapIdx is of 4 bytes, so multiplying by 4
 	lseek(fd, (iNodeMapIdx*4), SEEK_CUR);
 	
-	int* location;
+	int location = 0;
 	
-	if (read(fd, (void*)location, 4) < 0) {
+	if (read(fd, &location, 4) < 0) {
 		return -1;
 	} 
 
-	if (*location > *checkPointVal) {
+	if (location > checkPointVal) {
 		return -1;
 	}
 
 	lseek(fd, 0, SEEK_SET);
-	lseek(fd, (*location), SEEK_SET);
+	lseek(fd, (location), SEEK_SET);
 	
 	MFS_Stat_t* dirIMap;
 	if (read(fd, (void*)dirIMap, sizeof(MFS_Stat_t)) < 0) {
