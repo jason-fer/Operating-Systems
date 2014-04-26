@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-char* filename;
+char* filename = "example.img";
 int* port;
 int fd = 0;
 
@@ -29,6 +29,15 @@ void getargs(int *port, int argc, char *argv[]){
 int srv_Init(){
 	// Does this method really need to do anything? I'm thinking no....
 	printf("SERVER:: you called MFS_Init\n");
+
+	fd = open(filename, O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
+
+	if (fd < 0) {
+		char error_message[30] = "An error has occurred\n";
+		write(STDERR_FILENO, error_message, strlen(error_message));
+		exit(1);
+	}
+
 	return 0;
 }
 
@@ -154,14 +163,6 @@ int srv_Creat(int pinum, int type, char *name){
 	// @todo: write this method
 	printf("SERVER:: you called MFS_Creat\n");
 
-	fd = open(name, O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
-
-	if (fd < 0) {
-		char error_message[30] = "An error has occurred\n";
-		write(STDERR_FILENO, error_message, strlen(error_message));
-		exit(1);
-	}
-
 	return 0;
 }
 
@@ -178,18 +179,28 @@ int srv_Unlink(int pinum, char *name){
 	return 0;
 }
 
+void fs_Shutdown(){
+	int rs = fsync(fd);
+	assert(rs != -1);
+	rs = close(fd);
+	assert(rs != -1);
+	printf("SERVER:: you called MFS_Shutdown\n");
+	exit(0);
+}
+
 /**
  * Just tells the server to force all of its data structures to disk and 
  * shutdown by calling exit(0). This interface will mostly be used for testing 
  * purposes.
  */
 int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
-	// Notify client we are shutting down; this is the only method completely 
-	// tied to a client call.
-	rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r));
-	// @todo: we probably need to call fsync (or an equivalent) before exit!
-	printf("SERVER:: you called MFS_Shutdown\n");
-	exit(0);
+		// Notify client we are shutting down; this is the only method completely 
+		// tied to a client call.
+		rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r));
+		// @todo: we probably need to call fsync (or an equivalent) before exit!
+		fs_Shutdown();
+		// This will never happen....
+		return 0;
 }
 
 int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
@@ -269,6 +280,7 @@ int main(int argc, char *argv[]){
 	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
 
+	srv_Init();
 	// Can we find the base dir?
 	int inum = srv_Lookup(0, "dir");
 	printf("/dir is inum: %d\n", inum); // we expect 1
@@ -276,6 +288,7 @@ int main(int argc, char *argv[]){
 	printf("/code is inum: %d\n", inum); // we expect 2
 	inum = srv_Lookup(0, "it's");
 	printf("/it's is inum: %d\n", inum); // we expect 6
+	fs_Shutdown();
 
 	return 0;
 }
