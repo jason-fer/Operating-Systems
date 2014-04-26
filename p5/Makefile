@@ -1,5 +1,5 @@
 CC   = gcc
-OPTS = -Wall -Werror
+OPTS = -g -Wall -Werror
 
 all: clean libmfs server client
 

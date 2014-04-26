@@ -30,12 +30,12 @@ int srv_Init(){
 	// Does this method really need to do anything? I'm thinking no....
 	printf("SERVER:: you called MFS_Init\n");
 
-	fd = open(filename, O_RDWR | O_TRUNC | O_CREAT, S_IRWXU);
+	fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
 
 	if (fd < 0) {
-		char error_message[30] = "An error has occurred\n";
-		write(STDERR_FILENO, error_message, strlen(error_message));
-		exit(1);
+      char error_message[30] = "An error has occurred\n";
+      write(STDERR_FILENO, error_message, strlen(error_message));
+      exit(1);
 	}
 
 	return 0;
@@ -47,74 +47,89 @@ int srv_Init(){
  * returned. Success: return inode number of name; failure: return -1. Failure 
  * modes: invalid pinum, name does not exist in pinum.
  */
-int srv_Lookup(int pinum, char *name){
-	// @todo: write this method
-	printf("SERVER:: you called MFS_Lookup\n");
-		if (pinum < 0 || pinum >= MFS_BLOCK_SIZE) {
-			return -1;
-		}
+int srv_Lookup(int pinum, char *name) {
+  // @todo: write this method
+  printf("SERVER:: you called MFS_Lookup\n");
+  if (pinum < 0 || pinum >= MFS_BLOCK_SIZE) {
+    return -1;
+  }
 
-		int imapIdx = pinum/16;
-		lseek(fd, 0, SEEK_SET);
+  int imapPieceIdx = pinum/16;
+  lseek(fd, 0, SEEK_SET);
 
-		int* checkPointVal;
-		read(fd, (void*)checkPointVal, 4);
+  int checkPointVal = 0;
+  int rc = read(fd, &checkPointVal, sizeof(int));
+  if (rc < 0) {
+    return -1;
+  }
 
-		// Setting it to (end - 16384) bytes
-		// 16384 bytes as 256*64
-		// 256 is number of IMap entries
-		// 64 is the size of each I map
-		lseek(fd, (*checkPointVal) + imapIdx -16384, SEEK_SET);
+  lseek(fd, imapPieceIdx + 4, SEEK_SET);
+  
+  int locationToPiece = 0;
+  if (read(fd, &locationToPiece, 4) < 0) {
+    return -1;
+  }
+
+  int iNodeMapIdx = pinum%16;
+  // Each imapIdx is of 4 bytes, so multiplying by 4
+  lseek(fd, locationToPiece + (iNodeMapIdx*4), SEEK_CUR);
+  printf ("rc value %d\n",rc);
+  printf ("size val %lu\n",sizeof(int));
+  printf ("checkPointVal %d\n", checkPointVal);
+  printf ("locationToPiece %d\n", locationToPiece);
+  
+  int location = 0;
 		
-		int iNodeMapIdx = pinum%16;
-		// Each imapIdx is of 4 bytes, so multiplying by 4
-		lseek(fd, (iNodeMapIdx*4), SEEK_CUR);
+  rc = read(fd, &location, sizeof(int));
+  if (rc < 0) {
+    return -1;
+  }
+
+  if (location > checkPointVal) {
+    return -1;
+  }
+
+  /* printf ("rc value %d\n",rc); */
+  /* printf ("size val %lu\n",sizeof(int)); */
+  /* printf ("checkPointVal %d\n", checkPointVal); */
+  /* printf ("location %d\n", location); */
+
+  lseek(fd, 0, SEEK_SET);
+  lseek(fd, (location), SEEK_SET);
 		
-		int* location;
+  Inode_t* dirIMap = NULL;
+  if (read(fd, dirIMap, sizeof(Inode_t)) < 0) {
+    return -1;
+  }
+
+  if (dirIMap->type != MFS_DIRECTORY) {
+    return -1;
+  }
 		
-		if (read(fd, (void*)location, 4) < 0) {
-			return -1;
-		} 
+  int iNodePtrs[14];
+  int i = 0;
+  if (read(fd, iNodePtrs, 14*sizeof(int)) < 0) {
+    return -1;
+  }
 
-		if (*location > *checkPointVal) {
-			return -1;
-		}
+  MFS_DirEnt_t dirEntry;
+  for (; i < 14; ++i) {
 
-		lseek(fd, 0, SEEK_SET);
-		lseek(fd, (*location), SEEK_SET);
-		
-		MFS_Stat_t* dirIMap;
-		if (read(fd, (void*)dirIMap, sizeof(MFS_Stat_t)) < 0) {
-			return -1;
-		}  
+    lseek(fd, (iNodePtrs[i]), SEEK_SET);
 
-		if (dirIMap->type != MFS_DIRECTORY) {
-			return -1;
-		}
-		
-		int* iNodePtrs[14];
-		int i = 0;
-		if (read(fd, (void*)iNodePtrs, 14*sizeof(int*)) < 0) {
-			return -1;
-		}
+    if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+      return -1;
+    }
 
-		MFS_DirEnt_t* dirEntry;
-		for (; i < 14; ++i) {
-			lseek(fd, *(iNodePtrs[i]), SEEK_SET);
-
-			if (read(fd, (void*)dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
-				return -1;
-			}
-
-			if (dirEntry->inum == -1) {
-				continue;
-			}
+    if (dirEntry.inum == -1) {
+      continue;
+    }
 			
-			if (strcmp(dirEntry->name, name) == 0) {
-				return dirEntry->inum;
-			}
-		}
-		return -1;
+    if (strcmp(dirEntry.name, name) == 0) {
+      return dirEntry.inum;
+    }
+  }
+  return -1;
 }
 
 /**
@@ -196,7 +211,7 @@ void fs_Shutdown(){
 int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 		// Notify client we are shutting down; this is the only method completely 
 		// tied to a client call.
-		rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r));
+		/* rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); */
 		// @todo: we probably need to call fsync (or an equivalent) before exit!
 		fs_Shutdown();
 		// This will never happen....
@@ -245,27 +260,28 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 	}
 
 	// printf("reply: %s\n", m.reply);
-	return UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r));
+    return 0;
+	/* return UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); */
 }
 
 void start_server(int argc, char *argv[]){
-	int sd, port;
+	/* int sd, port; */
 	
-	getargs(&port, argc, argv);
-	sd = UDP_Open(port);
-	assert(sd > -1);
+	/* getargs(&port, argc, argv); */
+	/* sd = UDP_Open(port); */
+	/* assert(sd > -1); */
 
 	printf("SERVER:: waiting in loop\n");
 
-	while (1) {
-		struct sockaddr_in s;
-		struct msg_r m;
-		int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
-		if (rc > 0) {
-			rc = call_rpc_func(rc, sd, s, m);
-			// printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
-		}
-	}
+	/* while (1) { */
+	/* 	struct sockaddr_in s; */
+	/* 	struct msg_r m; */
+	/* 	/\* int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r)); *\/ */
+	/* 	/\* if (rc > 0) { *\/ */
+	/* 	/\* 	rc = call_rpc_func(rc, sd, s, m); *\/ */
+	/* 	/\* 	// printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer); *\/ */
+	/* 	/\* } *\/ */
+	/* } */
 }
 
 /**
