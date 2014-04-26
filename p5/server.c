@@ -104,29 +104,47 @@ int srv_Lookup(int pinum, char *name) {
     return -1;
   }
 		
-  int iNodePtrs[14];
+  int iNodePtr = -1;
   int i = 0;
-  if (read(fd, iNodePtrs, 14*sizeof(int)) < 0) {
-    return -1;
-  }
-
   MFS_DirEnt_t dirEntry;
+
   for (; i < 14; ++i) {
 
-    lseek(fd, (iNodePtrs[i]), SEEK_SET);
-
-    if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+    lseek(fd, (location)+sizeof(Inode_t)+i*sizeof(int), SEEK_SET);
+    iNodePtr = -1;
+    if (read(fd, &iNodePtr, sizeof(int)) < 0) {
       return -1;
     }
 
-    if (dirEntry.inum == -1) {
+    if (iNodePtr == 0) {
       continue;
     }
-			
-    if (strcmp(dirEntry.name, name) == 0) {
-      return dirEntry.inum;
+
+    printf ("iNode Ptr = %d\n",iNodePtr);
+
+    lseek(fd, (iNodePtr), SEEK_SET);
+ 
+    int count = 0;
+    while(count != 64) {
+      ++count;
+      if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+        continue;
+      }
+
+      if (dirEntry.inum == -1) {
+        continue;
+      } 
+      
+      printf ("dirEntry.inum %d\n", dirEntry.inum);
+      printf ("dirEntry.name %s\n", dirEntry.name);
+
+      if (strcmp(dirEntry.name, name) == 0) {
+        return dirEntry.inum;
+      }
     }
-  }
+   
+  } 
+
   return -1;
 }
 
