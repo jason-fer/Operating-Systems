@@ -239,12 +239,103 @@ int srv_Lookup(int pinum, char *name) {
  * return data in the format specified by MFS_DirEnt_t. Success: 0, failure: -1.
  * Failure modes: invalid inum, invalid block.
  */
-int srv_Read(int inum, char *buffer, int block){
-	printf("SERVER:: you called MFS_Read\n");
-	int location = get_inode_location(inum);
-	lseek(fd, location, SEEK_SET);
-	 // if ( read(fd, )) 
-	return 0;
+int srv_Read(int inum, char *buffer, int block) {
+
+  printf("SERVER:: you called MFS_Read\n");
+
+  int location = get_inode_location(inum);
+
+  Inode_t* currInode = malloc(sizeof(Inode_t));
+
+  lseek(fd, location, SEEK_SET);
+
+  if (read(fd, currInode, sizeof(Inode_t)) < 0) {
+    free(currInode);
+    currInode = NULL;
+    return -1;
+  }
+  
+  lseek(fd, location+sizeof(Inode_t)+(block)*sizeof(int), SEEK_SET); // setting it to block
+
+  int iNodePtr = -1;
+
+  if ( read(fd, &iNodePtr, sizeof(int)) < 0) {
+    free(currInode);
+    currInode = NULL;
+    return -1;
+  }
+
+  if (iNodePtr == 0) {
+    return -1;
+  }
+
+  lseek(fd, iNodePtr, SEEK_SET);
+
+  if (currInode->type == MFS_REGULAR_FILE) {
+    int size = -1;
+    if (block > (currInode->size - 1)/MFS_BLOCK_SIZE) {
+      size = MFS_BLOCK_SIZE;
+    } else if (block == (currInode->size - 1)/MFS_BLOCK_SIZE) {
+      size = (currInode->size)%MFS_BLOCK_SIZE ;
+    }
+      
+    free(currInode);
+    currInode = NULL;
+      
+    if (size < 0) {
+      return -1;
+    }
+
+    /* buffer = malloc(size*sizeof(char)); */
+    if (read(fd, buffer, size) < 0) {
+      return -1;
+    }
+      
+    return 0;
+  } else {
+    int count         = 0;
+    int actualEntries = 0;
+	MFS_DirEnt_t dirEntry;
+
+    while(count != 64) {
+      ++count;
+      if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+        continue;
+      }
+        
+      if (dirEntry.inum == -1) {
+        continue;
+      }
+      ++actualEntries;
+    }
+      
+    MFS_DirEnt_t* returnVal = malloc(actualEntries*sizeof(actualEntries));
+      
+    count          = 0;
+    int numEntries = 0;
+
+    while(count != 64) {
+      ++count;
+
+      if (numEntries == actualEntries) {
+        break;
+      }
+
+      if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+        continue;
+      }
+        
+      if (dirEntry.inum == -1) {
+        continue;
+      }
+        
+      returnVal[numEntries++] = dirEntry;
+    }
+
+    buffer = (char*)returnVal;
+    free(returnVal);
+    return 0;
+  }
 }
 
 /**
@@ -295,8 +386,8 @@ int srv_Creat(int pinum, int type, char *name){
 	// Get max inum if we don't have one already
 	if(inumMax == 0){
 		inumMax = get_max_inum();
-		int loc = get_inode_location(inumMax);
-		printf("max_inum: %d, loc: %d\n", inumMax, loc);
+		// int loc = get_inode_location(inumMax);
+		// printf("max_inum: %d, loc: %d\n", inumMax, loc);
 	}
 	return 0;
 	exit(0);
@@ -490,7 +581,7 @@ int main(int argc, char *argv[]){
 	// int inum;
 
 	srv_Init();
-	srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
+	// srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
 	// Can we find the base dir?
 	// inum = srv_Lookup(0, "dir");
 	// printf("/dir is inum: %d\n", inum); // we expect 1
@@ -500,8 +591,13 @@ int main(int argc, char *argv[]){
 	// printf("/it's is inum: %d\n", inum); // we expect 6
 	// inum = srv_Lookup(2, "helloworld.c");
 	// printf("/helloworld is inum: %d\n", inum); // we expect 6
-	fs_Shutdown();
-
+  char* buffer = malloc(4096*sizeof(char));
+  int rc = srv_Read(3, buffer, 0);
+  if (rc == 0) {
+    printf("From srv_Read\n");
+    printf("%s\n", buffer);
+    free(buffer);
+  }
 	return 0;
 }
 
