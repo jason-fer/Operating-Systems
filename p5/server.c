@@ -16,7 +16,6 @@ int fd = 0;
  */
 void getargs(int *port, int argc, char *argv[]){
 	if (argc != 3){
-		// prompt> server [portnum] [file-system-image]
 		fprintf(stderr, "Usage: %s [portnum] [file-system-image]\n", argv[0]);
 		exit(1);
 	}
@@ -27,25 +26,21 @@ void getargs(int *port, int argc, char *argv[]){
 }
 
 int get_inode_location(int inum) {
-	int imapPieceIdx = inum/16;
+	int imapPieceIdx = inum / 16;
 	lseek(fd, 0, SEEK_SET);
 
 	int checkPointVal = 0;
 	int rc = read(fd, &checkPointVal, sizeof(int));
-	if (rc < 0) {
-		return -1;
-	}
+	if (rc < 0) return -1;
 
-	lseek(fd, ((imapPieceIdx*4) + 4), SEEK_SET);
-	
+	lseek(fd, (imapPieceIdx * 4 ) + 4, SEEK_SET);
+
 	int locationToPiece = 0;
-	if (read(fd, &locationToPiece, 4) < 0) {
-		return -1;
-	}
+	if (read(fd, &locationToPiece, 4) < 0) return -1;
 
-	int iNodeMapIdx = inum%16;
+	int iNodeMapIdx = inum % 16;
 	// Each imapIdx is of 4 bytes, so multiplying by 4
-	lseek(fd, locationToPiece + (iNodeMapIdx*4), SEEK_SET);
+	lseek(fd, locationToPiece + (iNodeMapIdx * 4), SEEK_SET);
 	
 	// printf ("rc value %d\n",rc);
 	// printf ("size val %lu\n",sizeof(int));
@@ -53,16 +48,9 @@ int get_inode_location(int inum) {
 	// printf ("locationToPiece %d\n", locationToPiece);
 	
 	int location = 0;
-		
 	rc = read(fd, &location, sizeof(int));
-	if (rc < 0) {
-		return -1;
-	}
-
-	if (location > checkPointVal) {
-		return -1;
-	}
-
+	if (rc < 0) return -1;
+	if (location > checkPointVal) return -1;
 	return location;
 }
 
@@ -73,9 +61,9 @@ int srv_Init(){
 	fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
 
 	if (fd < 0) {
-			char error_message[30] = "An error has occurred\n";
-			write(STDERR_FILENO, error_message, strlen(error_message));
-			exit(1);
+		char error_message[30] = "An error has occurred\n";
+		write(STDERR_FILENO, error_message, strlen(error_message));
+		exit(1);
 	}
 
 	return 0;
@@ -88,22 +76,16 @@ int srv_Init(){
  * modes: invalid pinum, name does not exist in pinum.
  */
 int srv_Lookup(int pinum, char *name) {
-	// @todo: write this method
 	printf("SERVER:: you called MFS_Lookup\n");
-	if (pinum < 0 || pinum >= MFS_BLOCK_SIZE) {
-		return -1;
-	}
 
+	if (pinum < 0 || pinum >= MFS_BLOCK_SIZE) return -1;
 
 	int location = get_inode_location(pinum);
-
-	if (location < 0) {
-			return -1;
-	}
+	if (location < 0) return -1;
 	// printf ("rc value %d\n",rc);
 	// printf ("location %d\n", location);
-
-	lseek(fd, (location), SEEK_SET);
+	
+	lseek(fd, location, SEEK_SET);
 		
 	Inode_t* dirIMap = malloc(sizeof(Inode_t));
 	if (read(fd, dirIMap, sizeof(Inode_t)) < 0) {
@@ -126,40 +108,22 @@ int srv_Lookup(int pinum, char *name) {
 	MFS_DirEnt_t dirEntry;
 
 	for (; i < 14; ++i) {
-
 		lseek(fd, (location)+sizeof(Inode_t)+i*sizeof(int), SEEK_SET);
 		iNodePtr = -1;
-		if (read(fd, &iNodePtr, sizeof(int)) < 0) {
-			return -1;
-		}
-
-		if (iNodePtr == 0) {
-			continue;
-		}
-
+		if (read(fd, &iNodePtr, sizeof(int)) < 0) return -1;
+		if (iNodePtr == 0) continue; 
 		// printf ("iNode Ptr = %d\n",iNodePtr);
-
 		lseek(fd, (iNodePtr), SEEK_SET);
  
 		int count = 0;
 		while(count != 64) {
 			++count;
-			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
-				continue;
-			}
-
-			if (dirEntry.inum == -1) {
-				continue;
-			} 
-			
+			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) continue;
+			if (dirEntry.inum == -1) continue;
 			// printf ("dirEntry.inum %d\n", dirEntry.inum);
 			// printf ("dirEntry.name %s\n", dirEntry.name);
-
-			if (strcmp(dirEntry.name, name) == 0) {
-				return dirEntry.inum;
-			}
+			if (strcmp(dirEntry.name, name) == 0) return dirEntry.inum;
 		}
-	 
 	} 
 
 	return -1;
@@ -172,13 +136,10 @@ int srv_Lookup(int pinum, char *name) {
  * Failure modes: invalid inum, invalid block.
  */
 int srv_Read(int inum, char *buffer, int block){
-		printf("SERVER:: you called MFS_Read\n");
-		
-		int location = get_inode_location(inum);
-		
-		lseek(fd, location, SEEK_SET);
-
-		 // if ( read(fd, )) 
+	printf("SERVER:: you called MFS_Read\n");
+	int location = get_inode_location(inum);
+	lseek(fd, location, SEEK_SET);
+	 // if ( read(fd, )) 
 	return 0;
 }
 
@@ -335,15 +296,16 @@ int main(int argc, char *argv[]){
 	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
 	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
+	int inum;
 
 	srv_Init();
 	// Can we find the base dir?
-	int inum = srv_Lookup(0, "dir");
-	printf("/dir is inum: %d\n", inum); // we expect 1
-	inum = srv_Lookup(0, "code");
-	printf("/code is inum: %d\n", inum); // we expect 2
-	inum = srv_Lookup(0, "it's");
-	printf("/it's is inum: %d\n", inum); // we expect 6
+	// inum = srv_Lookup(0, "dir");
+	// printf("/dir is inum: %d\n", inum); // we expect 1
+	// inum = srv_Lookup(0, "code");
+	// printf("/code is inum: %d\n", inum); // we expect 2
+	// inum = srv_Lookup(0, "it's");
+	// printf("/it's is inum: %d\n", inum); // we expect 6
 	inum = srv_Lookup(2, "helloworld.c");
 	printf("/helloworld is inum: %d\n", inum); // we expect 6
 	fs_Shutdown();
