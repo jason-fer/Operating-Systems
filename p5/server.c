@@ -276,6 +276,23 @@ int srv_Read(int inum, char *buffer, int block) {
 int srv_Stat(int inum, MFS_Stat_t *m){
 	// @todo: write this method
 	printf("SERVER:: you called MFS_Stat\n");
+
+	int location = get_inode_location(inum);
+
+	Inode_t* currInode = malloc(sizeof(Inode_t));
+
+	lseek(fd, location, SEEK_SET);
+
+	if (read(fd, currInode, sizeof(Inode_t)) < 0) {
+		free(currInode);
+		currInode = NULL;
+		return -1;
+	}
+    
+    m->size = currInode->size;
+    m->type = currInode->type;
+    free(currInode);
+    currInode = NULL;
 	return 0;
 }
 
@@ -604,6 +621,16 @@ int main(int argc, char *argv[]){
 
 	srv_Init();
 	srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
+    // MFS_Stat_t m;
+    // srv_Stat(1, &m);
+    // printf ("size of inode 1 is: %d\n",m.size);
+    // printf ("type of inode 1 is: %d\n",m.type);
+    // srv_Stat(0, &m);
+    // printf ("size of inode 0 is: %d\n",m.size);
+    // printf ("type of inode 0 is: %d\n",m.type);
+    // srv_Stat(3, &m);
+    // printf ("size of inode 3 is: %d\n",m.size);
+    // printf ("type of inode 3 is: %d\n",m.type);
 	// Can we find the base dir?
 	// inum = srv_Lookup(0, "dir");
 	// printf("/dir is inum: %d\n", inum); // we expect 1
