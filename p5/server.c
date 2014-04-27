@@ -178,7 +178,7 @@ int srv_Read(int inum, char *buffer, int block){
     
     lseek(fd, location, SEEK_SET);
 
-    /* if ( read(fd, )) */
+     // if ( read(fd, )) 
 	return 0;
 }
 
@@ -201,6 +201,7 @@ int srv_Stat(int inum, MFS_Stat_t *m){
 int srv_Write(int inum, char *buffer, int block){
 	// @todo: write this method
 	printf("SERVER:: you called MFS_Write\n");
+	// Jason
 	return 0;
 } 
 
@@ -215,7 +216,7 @@ int srv_Creat(int pinum, int type, char *name){
 
 	// @todo: write this method
 	printf("SERVER:: you called MFS_Creat\n");
-
+  // Jason
 	return 0;
 }
 
@@ -229,6 +230,7 @@ int srv_Creat(int pinum, int type, char *name){
 int srv_Unlink(int pinum, char *name){
 	// @todo: write this method
 	printf("SERVER:: you called MFS_Unlink\n");
+	// Jason
 	return 0;
 }
 
@@ -246,17 +248,17 @@ void fs_Shutdown(){
  * shutdown by calling exit(0). This interface will mostly be used for testing 
  * purposes.
  */
-int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
+/*int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 		// Notify client we are shutting down; this is the only method completely 
 		// tied to a client call.
-		/* rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); */
+    rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
 		// @todo: we probably need to call fsync (or an equivalent) before exit!
 		fs_Shutdown();
 		// This will never happen....
 		return 0;
-}
+}*/
 
-int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
+/*int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 
 	switch(m.method){
 		case M_Init:
@@ -297,30 +299,30 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 		 break;
 	}
 
-	// printf("reply: %s\n", m.reply);
-    return 0;
-	/* return UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); */
-}
+	printf("reply: %s\n", m.reply);
+  return 0;
+  return UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
+}*/
 
-void start_server(int argc, char *argv[]){
-	/* int sd, port; */
+/*void start_server(int argc, char *argv[]){
+	 int sd, port; 
 	
-	/* getargs(&port, argc, argv); */
-	/* sd = UDP_Open(port); */
-	/* assert(sd > -1); */
+	 getargs(&port, argc, argv); 
+	 sd = UDP_Open(port); 
+	 assert(sd > -1); 
 
 	printf("SERVER:: waiting in loop\n");
 
-	/* while (1) { */
-	/* 	struct sockaddr_in s; */
-	/* 	struct msg_r m; */
-	/* 	/\* int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r)); *\/ */
-	/* 	/\* if (rc > 0) { *\/ */
-	/* 	/\* 	rc = call_rpc_func(rc, sd, s, m); *\/ */
-	/* 	/\* 	// printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer); *\/ */
-	/* 	/\* } *\/ */
-	/* } */
-}
+	 while (1) { 
+	 	struct sockaddr_in s; 
+	 	struct msg_r m; 
+	 	int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
+	 	if (rc > 0) {
+  	 	rc = call_rpc_func(rc, sd, s, m);
+      printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
+	 	}
+	 } 
+}*/
 
 /**
  * E.g. usage: ./server 10000 tempfile
