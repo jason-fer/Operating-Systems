@@ -25,19 +25,33 @@ void getargs(int *port, int argc, char *argv[]){
 	// printf("file image name: %s\n", *filename);
 }
 
+/**
+ * Use the checkpoint region & imap piece to find & return the inode location
+ */
 int get_inode_location(int inum) {
-	int imapPieceIdx = inum / 16;
+	// Set pointer at the front of the file
 	lseek(fd, 0, SEEK_SET);
 
+	// Read result into the address of the checkPointVal
 	int checkPointVal = 0;
 	int rc = read(fd, &checkPointVal, sizeof(int));
-	if (rc < 0) return -1;
+	if (rc < 0) {
+		return -1;
+	}
 
-	lseek(fd, (imapPieceIdx * 4 ) + 4, SEEK_SET);
-    
+	// There are 256 imaps, each with 16 inodes references (4096 total inodes)
+	int imapPieceIdx = inum / 16;
+	// +4 because the first checkpoint region entry points to the end of the log
+	// *4 because each imap ref is 4 a byte int
+	lseek(fd, (imapPieceIdx * 4) + 4, SEEK_SET);
+
+	// Now we read from the checkpoint region to find where the imap piece is
 	int locationToPiece = 0;
-	if (read(fd, &locationToPiece, 4) < 0) return -1;
+	if (read(fd, &locationToPiece, 4) < 0) {
+		return -1;
+	}
 
+	// We found our imap piece; now use modulus to find one of 16 inode refs
 	int iNodeMapIdx = inum % 16;
 	// Each imapIdx is of 4 bytes, so multiplying by 4
 	lseek(fd, locationToPiece + (iNodeMapIdx * 4), SEEK_SET);
@@ -47,25 +61,26 @@ int get_inode_location(int inum) {
 	// printf ("checkPointVal %d\n", checkPointVal);
 	// printf ("locationToPiece %d\n", locationToPiece);
 	
+	// Now read from the imap piece to find the inode ref
 	int location = 0;
 	rc = read(fd, &location, sizeof(int));
-	if (rc < 0) return -1;
-	if (location > checkPointVal) return -1;
+	if (rc < 0) {
+		return -1;
+	}
+	if (location > checkPointVal) {
+		return -1;
+	}
 	return location;
 }
 
 int srv_Init(){
-	// Does this method really need to do anything? I'm thinking no....
 	printf("SERVER:: you called MFS_Init\n");
-
 	fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
-
 	if (fd < 0) {
 		char error_message[30] = "An error has occurred\n";
 		write(STDERR_FILENO, error_message, strlen(error_message));
 		exit(1);
 	}
-
 	return 0;
 }
 
@@ -77,20 +92,20 @@ int srv_Init(){
  */
 int srv_Lookup(int pinum, char *name) {
 	printf("SERVER:: you called MFS_Lookup\n");
-
+	// Ignore invalid parent inode numbers
 	if (pinum < 0 || pinum >= MFS_BLOCK_SIZE) {
-        return -1;
-    }
+		return -1;
+	}
 
 	int location = get_inode_location(pinum);
 	if (location < 0) {
-        return -1;
-    }
+		return -1;
+	}
 	// printf ("rc value %d\n",rc);
 	// printf ("location %d\n", location);
-	
+
+	// Read in the inode directory map structure
 	lseek(fd, location, SEEK_SET);
-		
 	Inode_t* dirIMap = malloc(sizeof(Inode_t));
 	if (read(fd, dirIMap, sizeof(Inode_t)) < 0) {
 		free(dirIMap);
@@ -98,6 +113,7 @@ int srv_Lookup(int pinum, char *name) {
 		return -1;
 	}
 
+	// Parent inode numbers can only belong to directories
 	if (dirIMap->type != MFS_DIRECTORY) {
 		free(dirIMap);
 		dirIMap = NULL;
@@ -106,42 +122,40 @@ int srv_Lookup(int pinum, char *name) {
 
 	free(dirIMap);
 	dirIMap = NULL;
-		
+
 	int iNodePtr = -1;
 	int i = 0;
 	MFS_DirEnt_t dirEntry;
 
+	// Read each of the 14x pointers to 64 byte directory blocks
 	for (; i < 14; ++i) {
-		
-        lseek(fd, (location)+sizeof(Inode_t)+i*sizeof(int), SEEK_SET);
+		lseek(fd, (location + sizeof(Inode_t) + i * sizeof(int)), SEEK_SET);
 		iNodePtr = -1;
-		
-        if (read(fd, &iNodePtr, sizeof(int)) < 0) {
-            return -1;
-        }
-
+		if (read(fd, &iNodePtr, sizeof(int)) < 0) {
+			return -1;
+		}
 		if (iNodePtr == 0) {
-            continue; 
-        }
-
+			continue; 
+		}
 		// printf ("iNode Ptr = %d\n",iNodePtr);
 		lseek(fd, (iNodePtr), SEEK_SET);
  
 		int count = 0;
 		while(count != 64) {
 			++count;
+			// Reading a directory entry moves the file pointer forward to the next
 			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
-                continue;
-            }
-
+				continue;
+			}
+			// Ignore invalid inode numbers
 			if (dirEntry.inum == -1) {
-                continue;
-            }
+				continue;
+			}
 			// printf ("dirEntry.inum %d\n", dirEntry.inum);
 			// printf ("dirEntry.name %s\n", dirEntry.name);
 			if (strcmp(dirEntry.name, name) == 0) {
-                return dirEntry.inum;
-            }
+				return dirEntry.inum;
+			}
 		}
 	} 
 
