@@ -34,7 +34,7 @@ int get_inode_location(int inum) {
 	if (rc < 0) return -1;
 
 	lseek(fd, (imapPieceIdx * 4 ) + 4, SEEK_SET);
-
+    
 	int locationToPiece = 0;
 	if (read(fd, &locationToPiece, 4) < 0) return -1;
 
@@ -78,10 +78,14 @@ int srv_Init(){
 int srv_Lookup(int pinum, char *name) {
 	printf("SERVER:: you called MFS_Lookup\n");
 
-	if (pinum < 0 || pinum >= MFS_BLOCK_SIZE) return -1;
+	if (pinum < 0 || pinum >= MFS_BLOCK_SIZE) {
+        return -1;
+    }
 
 	int location = get_inode_location(pinum);
-	if (location < 0) return -1;
+	if (location < 0) {
+        return -1;
+    }
 	// printf ("rc value %d\n",rc);
 	// printf ("location %d\n", location);
 	
@@ -108,21 +112,36 @@ int srv_Lookup(int pinum, char *name) {
 	MFS_DirEnt_t dirEntry;
 
 	for (; i < 14; ++i) {
-		lseek(fd, (location)+sizeof(Inode_t)+i*sizeof(int), SEEK_SET);
+		
+        lseek(fd, (location)+sizeof(Inode_t)+i*sizeof(int), SEEK_SET);
 		iNodePtr = -1;
-		if (read(fd, &iNodePtr, sizeof(int)) < 0) return -1;
-		if (iNodePtr == 0) continue; 
+		
+        if (read(fd, &iNodePtr, sizeof(int)) < 0) {
+            return -1;
+        }
+
+		if (iNodePtr == 0) {
+            continue; 
+        }
+
 		// printf ("iNode Ptr = %d\n",iNodePtr);
 		lseek(fd, (iNodePtr), SEEK_SET);
  
 		int count = 0;
 		while(count != 64) {
 			++count;
-			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) continue;
-			if (dirEntry.inum == -1) continue;
+			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+                continue;
+            }
+
+			if (dirEntry.inum == -1) {
+                continue;
+            }
 			// printf ("dirEntry.inum %d\n", dirEntry.inum);
 			// printf ("dirEntry.name %s\n", dirEntry.name);
-			if (strcmp(dirEntry.name, name) == 0) return dirEntry.inum;
+			if (strcmp(dirEntry.name, name) == 0) {
+                return dirEntry.inum;
+            }
 		}
 	} 
 
