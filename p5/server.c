@@ -175,6 +175,10 @@ int srv_Read(int inum, char *buffer, int block) {
 
 	int location = get_inode_location(inum);
 
+    if (location < 0) {
+      return -1;
+    }
+
 	Inode_t* currInode = malloc(sizeof(Inode_t));
 
 	lseek(fd, location, SEEK_SET);
@@ -278,6 +282,10 @@ int srv_Stat(int inum, MFS_Stat_t *m){
 	printf("SERVER:: you called MFS_Stat\n");
 
 	int location = get_inode_location(inum);
+
+    if (location < 0) {
+      return -1;
+    }
 
 	Inode_t* currInode = malloc(sizeof(Inode_t));
 
