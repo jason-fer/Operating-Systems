@@ -291,31 +291,31 @@ int srv_Write(int inum, char *buffer, int block){
 	return 0;
 } 
 
-int set_next_inum(){
+int set_next_inum(int pinum, int type, char *name){
 	// Set pointer at the front of the file
 	lseek(fd, 0, SEEK_SET);
 	printf("Server:: finding max inum\n");
 
 	// Read result into the address of the checkPointVal
-	int curr = 0;
+	int ckpt_rg = 0;
 	int rc;
 	int i = 0;
 	int j = 0;
-	int count = 0, prev = 0;
+	int count = 0; //, prev = 0;
 	for (; i <= 256; i++){
 		// Make sure we read from the right position...
 		lseek(fd, i * 4, SEEK_SET);
-		rc = read(fd, &curr, sizeof(int));
+		rc = read(fd, &ckpt_rg, sizeof(int));
 		if(i == 0){
-			printf("end of log address: %d\n", curr);
+			printf("end of log address: %d\n", ckpt_rg);
 			continue;
 		}
-		prev = curr;
+		// prev = ckpt_rg;
 		count++;
-		// printf("curr %d: %d, curr - prev:%d\n", i, curr, curr - prev);
+		// printf("ckpt_rg %d: %d, ckpt_rg - prev:%d\n", i, ckpt_rg, ckpt_rg - prev);
 		if(count > 4) break;
 		// Find the imap piece
-		lseek(fd, curr, SEEK_SET);
+		lseek(fd, ckpt_rg, SEEK_SET);
 		// Now we read from the checkpoint region to find where the imap piece is
 		int inode_loc = 0;
 		// Dump the contents of this imap:
@@ -326,8 +326,8 @@ int set_next_inum(){
 			}
 			int the_imap = i - 1;
 			int the_inum = (j + ((i - 1) * 16));
-			// printf("inode_loc: %d, curr: %d, inum: %d, j: %d, i: %d \n", inode_loc, (curr - 64) + (j * 4), the_inum, j, i);
-			printf("inode_loc: %d, curr: %d, inum: %d, imap#: %d \n", inode_loc, (curr - 64) + (j * 4), the_inum, the_imap);
+			// printf("inode_loc: %d, ckpt_rg: %d, inum: %d, j: %d, i: %d \n", inode_loc, (ckpt_rg - 64) + (j * 4), the_inum, j, i);
+			printf("inode_loc: %d, ckpt_rg: %d, inum: %d, imap#: %d \n", inode_loc, (ckpt_rg - 64) + (j * 4), the_inum, the_imap);
 			if(inode_loc == 0){
 				// This becomes our next inode; we need to allocate memory here... 128 bytes?
 				// 64 bytes for the inode 
@@ -364,7 +364,7 @@ int srv_Creat(int pinum, int type, char *name){
 		return -1;
 	}
 
-	set_next_inum();
+	set_next_inum(pinum, type, name);
 	return 0;
 	exit(0);
 	
