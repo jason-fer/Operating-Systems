@@ -7,6 +7,7 @@
 char* filename = "example.img";
 int* port;
 int fd = 0;
+int inumMax = 0;
 
 /**
  * portnum: the port number that the file server should listen on.
@@ -73,6 +74,76 @@ int get_inode_location(int inum) {
 	return location;
 }
 
+int max_dir_inum(int location, int max_inum){
+	lseek(fd, location, SEEK_SET);
+	Inode_t* dirIMap = malloc(sizeof(Inode_t));
+	if (read(fd, dirIMap, sizeof(Inode_t)) < 0) {
+		free(dirIMap);
+		dirIMap = NULL;
+		return max_inum;
+	}
+
+	// Parent inode numbers can only belong to directories
+	if (dirIMap->type != MFS_DIRECTORY) {
+		free(dirIMap);
+		dirIMap = NULL;
+		return max_inum;
+	}
+
+	free(dirIMap);
+	dirIMap = NULL;
+
+	int iNodePtr = -1;
+	int i = 0;
+	MFS_DirEnt_t dirEntry;
+
+	// Read dir inode structure: 14x pointers to 64 byte directory blocks
+	for (; i < 14; ++i) {
+		lseek(fd, (location + sizeof(Inode_t) + i * sizeof(int)), SEEK_SET);
+		iNodePtr = -1;
+		if (read(fd, &iNodePtr, sizeof(int)) < 0) {
+			return max_inum;
+		}
+		if (iNodePtr == 0) {
+			continue; 
+		}
+		// printf ("iNode Ptr = %d\n",iNodePtr);
+		lseek(fd, (iNodePtr), SEEK_SET);
+ 
+		int count = 0;
+		while(count != 64) {
+			++count;
+			// Reading a directory entry moves the file pointer forward to the next
+			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+				continue;
+			}
+			// Ignore invalid inode numbers
+			if (dirEntry.inum == -1) {
+				continue;
+			}
+			// printf ("'%s': %d\n", dirEntry.name, dirEntry.inum);
+			if(dirEntry.inum > max_inum) max_inum = dirEntry.inum;
+		}
+	}
+	// printf("max inum: %d\n", max_inum);
+	return max_inum;
+}
+
+int get_max_inum(){
+	int next_inum = 0;
+	int loc = 1;
+	int max = 0;
+	while(loc > 0){ 
+		loc = get_inode_location(next_inum);
+		if(loc <= 0) break;
+		if(next_inum > max) max = next_inum;
+		max = max_dir_inum(loc, max);
+		// printf("max inum: %d\n", max);
+		next_inum++;
+	}
+	return max;
+}
+
 int srv_Init(){
 	printf("SERVER:: you called MFS_Init\n");
 	fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
@@ -127,7 +198,7 @@ int srv_Lookup(int pinum, char *name) {
 	int i = 0;
 	MFS_DirEnt_t dirEntry;
 
-	// Read each of the 14x pointers to 64 byte directory blocks
+	// Read dir inode structure: 14x pointers to 64 byte directory blocks
 	for (; i < 14; ++i) {
 		lseek(fd, (location + sizeof(Inode_t) + i * sizeof(int)), SEEK_SET);
 		iNodePtr = -1;
@@ -157,7 +228,7 @@ int srv_Lookup(int pinum, char *name) {
 				return dirEntry.inum;
 			}
 		}
-	} 
+	}
 
 	return -1;
 }
@@ -199,18 +270,105 @@ int srv_Write(int inum, char *buffer, int block){
 	return 0;
 } 
 
-
 /**
  * Makes a file (type == MFS_REGULAR_FILE) or directory (type == MFS_DIRECTORY) 
- * in the parent directory specified by pinum of name name . Returns 0 on 
+ * in the parent directory specified by pinum of name *name. Returns 0 on 
  * success, -1 on failure. Failure modes: pinum does not exist, or name is too 
- * long. If name already exists, return success (think about why).
+ * long. If name already exists, return success.
  */
 int srv_Creat(int pinum, int type, char *name){
-
-	// @todo: write this method
 	printf("SERVER:: you called MFS_Creat\n");
-	// Jason
+
+	// 1-create entry in an existing area
+	// 2-create entry to a new area
+	int rs = srv_Lookup(pinum, name);
+	if (strcmp((char*) &rs, name) == 0){
+		// The directory already exists; we are done
+		return 0;
+	}
+
+	int location = get_inode_location(pinum);
+	if (location < 0) {
+		return -1;
+	}
+
+	// Get max inum if we don't have one already
+	if(inumMax == 0){
+		inumMax = get_max_inum();
+		int loc = get_inode_location(inumMax);
+		printf("max_inum: %d, loc: %d\n", inumMax, loc);
+	}
+	return 0;
+	exit(0);
+	
+	// if every imap is full, point the appropriate CR region entry to a new imap
+	// if we created a new imap, initialze all the values to 0
+	// save the imap location for this node; we will point it to our inode
+
+	// Start--> this is almost indentical to srv_Lookup
+	// Read in the inode directory map structure
+	lseek(fd, location, SEEK_SET);
+	Inode_t* dirIMap = malloc(sizeof(Inode_t));
+	if (read(fd, dirIMap, sizeof(Inode_t)) < 0) {
+		free(dirIMap);
+		dirIMap = NULL;
+		return -1;
+	}
+
+	// Parent inode numbers can only belong to directories
+	if (dirIMap->type != MFS_DIRECTORY) {
+		free(dirIMap);
+		dirIMap = NULL;
+		return -1;
+	}
+
+	free(dirIMap);
+	dirIMap = NULL;
+
+	int iNodePtr = -1;
+	int i = 0;
+	int dirIsFound = 0;
+	MFS_DirEnt_t dirEntry;
+
+	// Read dir inode structure: 14x pointers to 64 byte directory blocks
+	for (; i < 14; ++i) {
+		lseek(fd, (location + sizeof(Inode_t) + i * sizeof(int)), SEEK_SET);
+		iNodePtr = -1;
+		if (read(fd, &iNodePtr, sizeof(int)) < 0) {
+			return -1;
+		}
+		if (iNodePtr == 0) {
+			continue; 
+		}
+		// printf ("iNode Ptr = %d\n",iNodePtr);
+		lseek(fd, (iNodePtr), SEEK_SET);
+ 
+		int count = 0;
+		while(count != 64) {
+			++count;
+			// Reading a directory entry moves the file pointer forward to the next
+			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+				continue;
+			}
+			// Ignore invalid inode numbers
+			if (dirEntry.inum == -1) {
+				dirIsFound = 1;
+				// Set the next free inum
+				// point the next free imap location to this new inode
+			}
+		}
+	}
+	// End --> of the part that is almost identical to srv_Lookup
+
+	// if(! dirIsFound){
+	// 	printf("failed to find free directory space\n");
+	// 	return -1;
+	// }
+
+	// if we created a file, we are done; set the size to 0
+	// if we created directory: add "." and ".."; if this is the root, both . & ..
+	// point to "0", otherwise . points to this directory and .. points to pinum
+
 	return 0;
 }
 
@@ -329,9 +487,10 @@ int main(int argc, char *argv[]){
 	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
 	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
-	int inum;
+	// int inum;
 
 	srv_Init();
+	srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
 	// Can we find the base dir?
 	// inum = srv_Lookup(0, "dir");
 	// printf("/dir is inum: %d\n", inum); // we expect 1
@@ -339,8 +498,8 @@ int main(int argc, char *argv[]){
 	// printf("/code is inum: %d\n", inum); // we expect 2
 	// inum = srv_Lookup(0, "it's");
 	// printf("/it's is inum: %d\n", inum); // we expect 6
-	inum = srv_Lookup(2, "helloworld.c");
-	printf("/helloworld is inum: %d\n", inum); // we expect 6
+	// inum = srv_Lookup(2, "helloworld.c");
+	// printf("/helloworld is inum: %d\n", inum); // we expect 6
 	fs_Shutdown();
 
 	return 0;
