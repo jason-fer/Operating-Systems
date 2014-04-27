@@ -27,43 +27,43 @@ void getargs(int *port, int argc, char *argv[]){
 }
 
 int get_inode_location(int inum) {
-  int imapPieceIdx = inum/16;
-  lseek(fd, 0, SEEK_SET);
+	int imapPieceIdx = inum/16;
+	lseek(fd, 0, SEEK_SET);
 
-  int checkPointVal = 0;
-  int rc = read(fd, &checkPointVal, sizeof(int));
-  if (rc < 0) {
-    return -1;
-  }
+	int checkPointVal = 0;
+	int rc = read(fd, &checkPointVal, sizeof(int));
+	if (rc < 0) {
+		return -1;
+	}
 
-  lseek(fd, ((imapPieceIdx*4) + 4), SEEK_SET);
-  
-  int locationToPiece = 0;
-  if (read(fd, &locationToPiece, 4) < 0) {
-    return -1;
-  }
+	lseek(fd, ((imapPieceIdx*4) + 4), SEEK_SET);
+	
+	int locationToPiece = 0;
+	if (read(fd, &locationToPiece, 4) < 0) {
+		return -1;
+	}
 
-  int iNodeMapIdx = inum%16;
-  // Each imapIdx is of 4 bytes, so multiplying by 4
-  lseek(fd, locationToPiece + (iNodeMapIdx*4), SEEK_SET);
-  
-  // printf ("rc value %d\n",rc);
-  // printf ("size val %lu\n",sizeof(int));
-  // printf ("checkPointVal %d\n", checkPointVal);
-  // printf ("locationToPiece %d\n", locationToPiece);
-  
-  int location = 0;
+	int iNodeMapIdx = inum%16;
+	// Each imapIdx is of 4 bytes, so multiplying by 4
+	lseek(fd, locationToPiece + (iNodeMapIdx*4), SEEK_SET);
+	
+	// printf ("rc value %d\n",rc);
+	// printf ("size val %lu\n",sizeof(int));
+	// printf ("checkPointVal %d\n", checkPointVal);
+	// printf ("locationToPiece %d\n", locationToPiece);
+	
+	int location = 0;
 		
-  rc = read(fd, &location, sizeof(int));
-  if (rc < 0) {
-    return -1;
-  }
+	rc = read(fd, &location, sizeof(int));
+	if (rc < 0) {
+		return -1;
+	}
 
-  if (location > checkPointVal) {
-    return -1;
-  }
+	if (location > checkPointVal) {
+		return -1;
+	}
 
-  return location;
+	return location;
 }
 
 int srv_Init(){
@@ -73,9 +73,9 @@ int srv_Init(){
 	fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
 
 	if (fd < 0) {
-      char error_message[30] = "An error has occurred\n";
-      write(STDERR_FILENO, error_message, strlen(error_message));
-      exit(1);
+			char error_message[30] = "An error has occurred\n";
+			write(STDERR_FILENO, error_message, strlen(error_message));
+			exit(1);
 	}
 
 	return 0;
@@ -88,81 +88,81 @@ int srv_Init(){
  * modes: invalid pinum, name does not exist in pinum.
  */
 int srv_Lookup(int pinum, char *name) {
-  // @todo: write this method
-  printf("SERVER:: you called MFS_Lookup\n");
-  if (pinum < 0 || pinum >= MFS_BLOCK_SIZE) {
-    return -1;
-  }
+	// @todo: write this method
+	printf("SERVER:: you called MFS_Lookup\n");
+	if (pinum < 0 || pinum >= MFS_BLOCK_SIZE) {
+		return -1;
+	}
 
 
-  int location = get_inode_location(pinum);
+	int location = get_inode_location(pinum);
 
-  if (location < 0) {
-      return -1;
-  }
-  // printf ("rc value %d\n",rc);
-  // printf ("location %d\n", location);
+	if (location < 0) {
+			return -1;
+	}
+	// printf ("rc value %d\n",rc);
+	// printf ("location %d\n", location);
 
-  lseek(fd, (location), SEEK_SET);
+	lseek(fd, (location), SEEK_SET);
 		
-  Inode_t* dirIMap = malloc(sizeof(Inode_t));
-  if (read(fd, dirIMap, sizeof(Inode_t)) < 0) {
-    free(dirIMap);
-    dirIMap = NULL;
-    return -1;
-  }
+	Inode_t* dirIMap = malloc(sizeof(Inode_t));
+	if (read(fd, dirIMap, sizeof(Inode_t)) < 0) {
+		free(dirIMap);
+		dirIMap = NULL;
+		return -1;
+	}
 
-  if (dirIMap->type != MFS_DIRECTORY) {
-    free(dirIMap);
-    dirIMap = NULL;
-    return -1;
-  }
+	if (dirIMap->type != MFS_DIRECTORY) {
+		free(dirIMap);
+		dirIMap = NULL;
+		return -1;
+	}
 
-  free(dirIMap);
-  dirIMap = NULL;
+	free(dirIMap);
+	dirIMap = NULL;
 		
-  int iNodePtr = -1;
-  int i = 0;
-  MFS_DirEnt_t dirEntry;
+	int iNodePtr = -1;
+	int i = 0;
+	MFS_DirEnt_t dirEntry;
 
-  for (; i < 14; ++i) {
+	for (; i < 14; ++i) {
 
-    lseek(fd, (location)+sizeof(Inode_t)+i*sizeof(int), SEEK_SET);
-    iNodePtr = -1;
-    if (read(fd, &iNodePtr, sizeof(int)) < 0) {
-      return -1;
-    }
+		lseek(fd, (location)+sizeof(Inode_t)+i*sizeof(int), SEEK_SET);
+		iNodePtr = -1;
+		if (read(fd, &iNodePtr, sizeof(int)) < 0) {
+			return -1;
+		}
 
-    if (iNodePtr == 0) {
-      continue;
-    }
+		if (iNodePtr == 0) {
+			continue;
+		}
 
-    // printf ("iNode Ptr = %d\n",iNodePtr);
+		// printf ("iNode Ptr = %d\n",iNodePtr);
 
-    lseek(fd, (iNodePtr), SEEK_SET);
+		lseek(fd, (iNodePtr), SEEK_SET);
  
-    int count = 0;
-    while(count != 64) {
-      ++count;
-      if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
-        continue;
-      }
+		int count = 0;
+		while(count != 64) {
+			++count;
+			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+				continue;
+			}
 
-      if (dirEntry.inum == -1) {
-        continue;
-      } 
-      
-      // printf ("dirEntry.inum %d\n", dirEntry.inum);
-      // printf ("dirEntry.name %s\n", dirEntry.name);
+			if (dirEntry.inum == -1) {
+				continue;
+			} 
+			
+			// printf ("dirEntry.inum %d\n", dirEntry.inum);
+			// printf ("dirEntry.name %s\n", dirEntry.name);
 
-      if (strcmp(dirEntry.name, name) == 0) {
-        return dirEntry.inum;
-      }
-    }
-   
-  } 
+			if (strcmp(dirEntry.name, name) == 0) {
+				return dirEntry.inum;
+			}
+		}
+	 
+	} 
 
-  return -1;
+	return -1;
 }
 
 /**
@@ -172,13 +172,13 @@ int srv_Lookup(int pinum, char *name) {
  * Failure modes: invalid inum, invalid block.
  */
 int srv_Read(int inum, char *buffer, int block){
-	printf("SERVER:: you called MFS_Read\n");
-    
-    int location = get_inode_location(inum);
-    
-    lseek(fd, location, SEEK_SET);
+		printf("SERVER:: you called MFS_Read\n");
+		
+		int location = get_inode_location(inum);
+		
+		lseek(fd, location, SEEK_SET);
 
-     // if ( read(fd, )) 
+		 // if ( read(fd, )) 
 	return 0;
 }
 
@@ -216,7 +216,7 @@ int srv_Creat(int pinum, int type, char *name){
 
 	// @todo: write this method
 	printf("SERVER:: you called MFS_Creat\n");
-  // Jason
+	// Jason
 	return 0;
 }
 
@@ -251,7 +251,7 @@ void fs_Shutdown(){
 /*int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 		// Notify client we are shutting down; this is the only method completely 
 		// tied to a client call.
-    rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
+		rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
 		// @todo: we probably need to call fsync (or an equivalent) before exit!
 		fs_Shutdown();
 		// This will never happen....
@@ -300,8 +300,8 @@ void fs_Shutdown(){
 	}
 
 	printf("reply: %s\n", m.reply);
-  return 0;
-  return UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
+	return 0;
+	return UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
 }*/
 
 /*void start_server(int argc, char *argv[]){
@@ -314,13 +314,13 @@ void fs_Shutdown(){
 	printf("SERVER:: waiting in loop\n");
 
 	 while (1) { 
-	 	struct sockaddr_in s; 
-	 	struct msg_r m; 
-	 	int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
-	 	if (rc > 0) {
-  	 	rc = call_rpc_func(rc, sd, s, m);
-      printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
-	 	}
+		struct sockaddr_in s; 
+		struct msg_r m; 
+		int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
+		if (rc > 0) {
+			rc = call_rpc_func(rc, sd, s, m);
+			printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
+		}
 	 } 
 }*/
 
@@ -350,3 +350,4 @@ int main(int argc, char *argv[]){
 
 	return 0;
 }
+
