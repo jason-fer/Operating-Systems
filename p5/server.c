@@ -171,101 +171,101 @@ int srv_Lookup(int pinum, char *name) {
  */
 int srv_Read(int inum, char *buffer, int block) {
 
-  printf("SERVER:: you called MFS_Read\n");
+	printf("SERVER:: you called MFS_Read\n");
 
-  int location = get_inode_location(inum);
+	int location = get_inode_location(inum);
 
-  Inode_t* currInode = malloc(sizeof(Inode_t));
+	Inode_t* currInode = malloc(sizeof(Inode_t));
 
-  lseek(fd, location, SEEK_SET);
+	lseek(fd, location, SEEK_SET);
 
-  if (read(fd, currInode, sizeof(Inode_t)) < 0) {
-    free(currInode);
-    currInode = NULL;
-    return -1;
-  }
-  
-  lseek(fd, location+sizeof(Inode_t)+(block)*sizeof(int), SEEK_SET); // setting it to block
+	if (read(fd, currInode, sizeof(Inode_t)) < 0) {
+		free(currInode);
+		currInode = NULL;
+		return -1;
+	}
+	
+	lseek(fd, location+sizeof(Inode_t)+(block)*sizeof(int), SEEK_SET); // setting it to block
 
-  int iNodePtr = -1;
+	int iNodePtr = -1;
 
-  if ( read(fd, &iNodePtr, sizeof(int)) < 0) {
-    free(currInode);
-    currInode = NULL;
-    return -1;
-  }
+	if ( read(fd, &iNodePtr, sizeof(int)) < 0) {
+		free(currInode);
+		currInode = NULL;
+		return -1;
+	}
 
-  if (iNodePtr == 0) {
-    return -1;
-  }
+	if (iNodePtr == 0) {
+		return -1;
+	}
 
-  lseek(fd, iNodePtr, SEEK_SET);
+	lseek(fd, iNodePtr, SEEK_SET);
 
-  if (currInode->type == MFS_REGULAR_FILE) {
-    int size = -1;
-    if (block > (currInode->size - 1)/MFS_BLOCK_SIZE) {
-      size = MFS_BLOCK_SIZE;
-    } else if (block == (currInode->size - 1)/MFS_BLOCK_SIZE) {
-      size = (currInode->size)%MFS_BLOCK_SIZE ;
-    }
-      
-    free(currInode);
-    currInode = NULL;
-      
-    if (size < 0) {
-      return -1;
-    }
+	if (currInode->type == MFS_REGULAR_FILE) {
+		int size = -1;
+		if (block > (currInode->size - 1)/MFS_BLOCK_SIZE) {
+			size = MFS_BLOCK_SIZE;
+		} else if (block == (currInode->size - 1)/MFS_BLOCK_SIZE) {
+			size = (currInode->size)%MFS_BLOCK_SIZE ;
+		}
+			
+		free(currInode);
+		currInode = NULL;
+			
+		if (size < 0) {
+			return -1;
+		}
 
-    /* buffer = malloc(size*sizeof(char)); */
-    if (read(fd, buffer, size) < 0) {
-      return -1;
-    }
-      
-    return 0;
-  } else {
-    int count         = 0;
-    int actualEntries = 0;
-	MFS_DirEnt_t dirEntry;
+		/* buffer = malloc(size*sizeof(char)); */
+		if (read(fd, buffer, size) < 0) {
+			return -1;
+		}
+			
+		return 0;
+	} else {
+		int count         = 0;
+		int actualEntries = 0;
+		MFS_DirEnt_t dirEntry;
 
-    while(count != 64) {
-      ++count;
-      if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
-        continue;
-      }
-        
-      if (dirEntry.inum == -1) {
-        continue;
-      }
-      ++actualEntries;
-    }
-      
-    MFS_DirEnt_t* returnVal = malloc(actualEntries*sizeof(actualEntries));
-      
-    count          = 0;
-    int numEntries = 0;
+		while(count != 64) {
+			++count;
+			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+				continue;
+			}
+				
+			if (dirEntry.inum == -1) {
+				continue;
+			}
+			++actualEntries;
+		}
+			
+		MFS_DirEnt_t* returnVal = malloc(actualEntries*sizeof(actualEntries));
+			
+		count          = 0;
+		int numEntries = 0;
 
-    while(count != 64) {
-      ++count;
+		while(count != 64) {
+			++count;
 
-      if (numEntries == actualEntries) {
-        break;
-      }
+			if (numEntries == actualEntries) {
+				break;
+			}
 
-      if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
-        continue;
-      }
-        
-      if (dirEntry.inum == -1) {
-        continue;
-      }
-        
-      returnVal[numEntries++] = dirEntry;
-    }
+			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
+				continue;
+			}
+				
+			if (dirEntry.inum == -1) {
+				continue;
+			}
+				
+			returnVal[numEntries++] = dirEntry;
+		}
 
-    buffer = (char*)returnVal;
-    free(returnVal);
-    return 0;
-  }
+		buffer = (char*)returnVal;
+		free(returnVal);
+		return 0;
+	}
 }
 
 /**
@@ -285,9 +285,55 @@ int srv_Stat(int inum, MFS_Stat_t *m){
  * block, not a regular file (because you can't write to directories).
  */
 int srv_Write(int inum, char *buffer, int block){
-	// @todo: write this method
+	// @todo: make sure buffer is not empty
+	// if(strlen(buffer) != 4096) return 0;
 	printf("SERVER:: you called MFS_Write\n");
-	// Jason
+	// Check for valid block: 0 to 13
+	if(block < 0 || block > 13) return -1;
+
+	// Check for invalid inum
+	int location = get_inode_location(inum);
+	if(location == 0) return -1;
+
+	Inode_t* currInode = malloc(sizeof(Inode_t));
+	lseek(fd, location, SEEK_SET);
+	if (read(fd, currInode, sizeof(Inode_t)) < 0) {
+		free(currInode);
+		currInode = NULL;
+		return -1;
+	}
+	// setting it to block
+	lseek(fd, location+sizeof(Inode_t)+(block)*sizeof(int), SEEK_SET); 
+	int iNodePtr = -1;
+	if (read(fd, &iNodePtr, sizeof(int)) < 0) {
+		free(currInode);
+		currInode = NULL;
+		return -1;
+	}
+	if (iNodePtr == 0) return -1;
+	// We can only read files
+	if (currInode->type == MFS_DIRECTORY) return -1;
+
+	// if block was not in use, increase the size of inode
+	// write data to the block... 
+
+	// int size = -1;
+	// if (block > (currInode->size - 1)/MFS_BLOCK_SIZE) {
+	// 	size = MFS_BLOCK_SIZE;
+	// } else if (block == (currInode->size - 1)/MFS_BLOCK_SIZE) {
+	// 	size = (currInode->size)%MFS_BLOCK_SIZE ;
+	// }
+
+	// lseek(fd, iNodePtr, SEEK_SET);
+		
+	// free(currInode);
+	// currInode = NULL;
+
+	// if (read(fd, buffer, 4096) < 0) {
+	// 	return -1;
+	// }
+			
+	
 	return 0;
 } 
 
@@ -567,19 +613,15 @@ int main(int argc, char *argv[]){
 	// printf("/it's is inum: %d\n", inum); // we expect 6
 	// inum = srv_Lookup(2, "helloworld.c");
 	// printf("/helloworld is inum: %d\n", inum); // we expect 6
-  // char* buffer = malloc(4096*sizeof(char));
-  // int rc = srv_Read(3, buffer, 0);
-  // if (rc == 0) {
-  //   printf("From srv_Read\n");
-  //   printf("%s\n", buffer);
-  //   free(buffer);
-  // }
+	// char* buffer = malloc(4096*sizeof(char));
+	// int rc = srv_Read(3, buffer, 0);
+	// if (rc == 0) {
+	//   printf("From srv_Read\n");
+	//   printf("%s\n", buffer);
+	//   free(buffer);
+	// }
 	return 0;
 }
-
-
-
-
 
 /*// Get max inum if we don't have one already
 if(inumMax == 0){
