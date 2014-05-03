@@ -31,7 +31,14 @@ void dump_file_inode(int fd, int file_loc, int file_size){
  
 		printf("inode_blk_ptrs[%i]:%d, data block contents: \n%s\n",i, inode_blk_ptrs[i], buffer);
 
+		// XXXXXXXXXXXXXXXXXXXXXX TEMP XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+		// prevents crazy log dump...
+		if(file_size > MFS_BLOCK_SIZE){
+			file_size = MFS_BLOCK_SIZE;
+		}
+		// XXXXXXXXXXXXXXXXXXXXXX TEMP XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 		while(file_size > 0) {
+			printf("curr file size: %d\n", file_size);
 			// Keep reading forward on file...
 			if(file_size >= MFS_BLOCK_SIZE){
 				if (read(fd, &buffer, MFS_BLOCK_SIZE) < 0) { continue; }
@@ -75,8 +82,8 @@ void dump_dir_inode(int fd, int dir_loc){
 	return;
 }
 
-// Generate a log dump of the file structure
-int dump_log(int pinum, int type, char *name){
+// Generate a log dump of the file structure; expects a file
+int dump_log(){
 	// Set pointer at the front of the file
 	lseek(fd, 0, SEEK_SET);
 	printf("Server:: ################# Log Dump #################\n");
@@ -490,7 +497,7 @@ int srv_Write(int inum, char *buffer, int block){
 	lseek(fd, inode_loc, SEEK_SET);
 	if (read(fd, curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
 	if (curr_inode->type == MFS_DIRECTORY) { free(curr_inode); return -1; }
-
+	printf("file sizexxxxxxxxxxx: %d\n", curr_inode->size);
 	// Determine the new file size
 	int inode_ptrs[14];
 	lseek(fd, (inode_loc + sizeof(Inode_t)), SEEK_SET);
@@ -508,24 +515,30 @@ int srv_Write(int inum, char *buffer, int block){
 		if (read(fd, &old_buffer, MFS_BLOCK_SIZE) < 0 ) { free(curr_inode); return -1; }
 		// printf("old buffer:\n%s\n", old_buffer);
 		// Subtract the size of the old block version
-		curr_inode->size -= strlen(old_buffer);
+		int old_buf_size = strlen(old_buffer);
+		printf("old buffer size: %s\n", old_buffer);
+		assert(old_buf_size >= 0);
+		curr_inode->size = curr_inode->size - old_buf_size;
 		// Add the size of the new block version
 		curr_inode->size += data_size;
 	}
+	printf("file size: %d\n", curr_inode->size);
+	assert(curr_inode->size < MFS_BLOCK_SIZE);
+	assert(curr_inode->size >= 0);
 	// printf("new size: %d\n", curr_inode->size);
 	printf("EOL:::::::::::::::::::::::::::%d\n", eol_ptr);
 	// Set the pointer past the current 64 byte imap piece it points to:
 	// (in Brandon's implementation the inode is last)
 	// 1-append the buffer to a new data block (should we be writing MFS_BLOCK_SIZE?)
 	lseek(fd, eol_ptr, SEEK_SET); // <--data goes to end of log...
-	if(write(fd, buffer, sizeof(char) * data_size) < 0){ free(curr_inode); return -1; }
-	lseek(fd, eol_ptr + data_size + 16, SEEK_SET);
+	if(write(fd, buffer, MFS_BLOCK_SIZE) < 0){ free(curr_inode); return -1; }
+	// lseek(fd, eol_ptr + MFS_BLOCK_SIZE, SEEK_SET);
 	// Record the new position of our data block
 	inode_ptrs[block] = eol_ptr;
 	printf("WRITING FILE AT:::::::::::::::::::::::::::::::::%d\n", inode_ptrs[block]);
 	printf("WRITING FILE AT:::::::::::::::::::::::::::::::::%d\n", eol_ptr);
 	// Set the eol_ptr just past the data block we just wrote (to the inode)
-	eol_ptr += data_size + 16; // <--this is now our inode location...
+	eol_ptr += MFS_BLOCK_SIZE; // <--this is now our inode location...
 
 	// 2-append the updated inode which points to the new data block
 	if(write(fd, &curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
@@ -555,7 +568,7 @@ int srv_Write(int inum, char *buffer, int block){
 
 	fsync(fd);
 	free(curr_inode);
-
+	// exit(0);
 	return 0;
 } 
 
@@ -581,10 +594,6 @@ int srv_Creat(int pinum, int type, char *name){
 		return -1;
 	}
 
-	dump_log(pinum, type, name);
-	return 0;
-	exit(0);
-	
 	// if every imap is full, point the appropriate CR region entry to a new imap
 	// if we created a new imap, initialze all the values to 0
 	// save the imap location for this node; we will point it to our inode
@@ -779,7 +788,9 @@ int main(int argc, char *argv[]){
 	sprintf(buffer, "#include <stdio.h>\nxxxxxxxxxx\n");
 	srv_Write(3, buffer, 0);
 
-	srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
+	dump_log();
+
+	// srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
 
 	// MFS_Stat_t m;
 	// srv_Stat(1, &m);
