@@ -74,7 +74,7 @@ void dump_dir_inode(int fd, int dir_loc){
 }
 
 // Generate a log dump of the file structure
-int log_dump(int pinum, int type, char *name){
+int dump_log(int pinum, int type, char *name){
 	// Set pointer at the front of the file
 	lseek(fd, 0, SEEK_SET);
 	printf("Server:: ################# Log Dump #################\n");
@@ -524,7 +524,7 @@ int srv_Creat(int pinum, int type, char *name){
 		return -1;
 	}
 
-	log_dump(pinum, type, name);
+	dump_log(pinum, type, name);
 	return 0;
 	exit(0);
 	
