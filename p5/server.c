@@ -4,40 +4,40 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-// char* filename = "example.img";
-char* filename = "bare.img";
+char* filename = "example.img";
+// char* filename = "bare.img";
 int* port;
 int fd = 0;
 int inumMax = 0;
 
 // Dump contents of the current file
 void dump_file_inode(int fd, int file_loc, int file_size){
-	int inodes[14];
+	int inode_blk_ptrs[14];
 	int i = 0;
-	char buffer[4096];
+	char buffer[MFS_BLOCK_SIZE];
 
 	if(file_size <= 0){ 
 		printf("file_loc:%d (empty file)\n", file_loc);
 	}
 
 	lseek(fd, (file_loc + sizeof(Inode_t)), SEEK_SET);
-	if (read(fd, &inodes, sizeof(int) * 14) < 0) { return; }
+	if (read(fd, &inode_blk_ptrs, sizeof(int) * 14) < 0) { return; }
 
 	// Read dir inode structure: 14x pointers to 64 byte directory blocks
 	for (; i < 14; ++i) {
-		if(inodes[i] == 0) continue; // inode not in use!
-		printf("inode:%d, loc:%d\n", i, inodes[i]);
-		lseek(fd, inodes[i], SEEK_SET);
+		if(inode_blk_ptrs[i] == 0) continue; // inode not in use!
+		// printf("block ptr:%d, loc:%d\n", i, inode_blk_ptrs[i]);
+		lseek(fd, inode_blk_ptrs[i], SEEK_SET);
  
 		while(file_size > 0) {
 			// Keep reading forward on file...
-			if(file_size >= 4096){
-				if (read(fd, &buffer, 4096) < 0) { continue; }
+			if(file_size >= MFS_BLOCK_SIZE){
+				if (read(fd, &buffer, MFS_BLOCK_SIZE) < 0) { continue; }
 			} else {
 				if (read(fd, &buffer, file_size) < 0) { continue; }
 			}
-			printf("inode:%d, data block contents: \n%s\n",i, buffer);
-			file_size -= 4096;
+			printf("blk ptr:%d, inode_blk_ptrs[i]:%d, data block contents: \n%s\n",i, inode_blk_ptrs[i], buffer);
+			file_size -= MFS_BLOCK_SIZE;
 		}
 	}
 
@@ -46,18 +46,18 @@ void dump_file_inode(int fd, int file_loc, int file_size){
 
 // Dump contents of the current dir
 void dump_dir_inode(int fd, int dir_loc){
-	int inodes[14];
+	int inode_block_ptrs[14];
 	int i = 0;
 	MFS_DirEnt_t dirEntry;
 
 	lseek(fd, (dir_loc + sizeof(Inode_t)), SEEK_SET);
-	if (read(fd, &inodes, sizeof(int) * 14) < 0) { return; }
+	if (read(fd, &inode_block_ptrs, sizeof(int) * 14) < 0) { return; }
 
 	// Read dir inode structure: 14x pointers to 64 byte directory blocks
 	for (; i < 14; ++i) {
-		if(inodes[i] == 0) continue; // inode not in use!
-		printf("inode:%d, loc:%d\n", i, inodes[i]);
-		lseek(fd, inodes[i], SEEK_SET);
+		if(inode_block_ptrs[i] == 0) continue; // inode not in use!
+		printf("inode:%d, loc:%d\n", i, inode_block_ptrs[i]);
+		lseek(fd, inode_block_ptrs[i], SEEK_SET);
  
 		int count = 0;
 		while(count != 64) {
@@ -170,6 +170,12 @@ void getargs(int *port, int argc, char *argv[]){
  * Use the checkpoint region & imap piece to find & return the inode location
  */
 int get_inode_location(int inum) {
+
+	// Ignore invalid inode numbers
+	if (inum < 0 || inum >= MFS_BLOCK_SIZE) {
+		return -1;
+	}
+
 	// Set pointer at the front of the file
 	lseek(fd, 0, SEEK_SET);
 
@@ -310,11 +316,12 @@ int srv_Lookup(int pinum, char *name) {
  * Failure modes: invalid inum, invalid block.
  */
 int srv_Read(int inum, char *buffer, int block) {
+	// don't allow non-sensical blocks (lt 0, or gt 13)
+	if(block < 0 || block > 13) return -1;
 
 	printf("SERVER:: you called MFS_Read\n");
 
 	int location = get_inode_location(inum);
-
 	if (location < 0) {
 	  return -1;
 	}
@@ -418,11 +425,8 @@ int srv_Read(int inum, char *buffer, int block) {
  * Failure modes: inum does not exist.
  */
 int srv_Stat(int inum, MFS_Stat_t *m){
-	// @todo: write this method
 	printf("SERVER:: you called MFS_Stat\n");
-
 	int location = get_inode_location(inum);
-
 	if (location < 0) {
 	  return -1;
 	}
@@ -450,55 +454,97 @@ int srv_Stat(int inum, MFS_Stat_t *m){
  * block, not a regular file (because you can't write to directories).
  */
 int srv_Write(int inum, char *buffer, int block){
-	// @todo: make sure buffer is not empty
-	// if(strlen(buffer) != 4096) return 0;
 	printf("SERVER:: you called MFS_Write\n");
-	// Check for valid block: 0 to 13
-	if(block < 0 || block > 13) return -1;
+	// Check for valid block: 0 to 13 or invalid inum
+	if(block < 0 || block > 13 || inum < 0 || inum >= MFS_BLOCK_SIZE) return -1;
 
-	// Check for invalid inum
-	int location = get_inode_location(inum);
-	if(location == 0) return -1;
+	// read the checkpoint region
+	int eol_ptr = 0; // the end of LFS pointer; should always point to an imap
+	lseek(fd, 0, SEEK_SET);
+	if(read(fd, &eol_ptr, sizeof(int)) < 0){ return -1; }
+	// printf("!!!!!!!!!!!!!!!!!!!!!! orig EOL: %d\n", eol_ptr);
 
-	Inode_t* currInode = malloc(sizeof(Inode_t));
-	lseek(fd, location, SEEK_SET);
-	if (read(fd, currInode, sizeof(Inode_t)) < 0) {
-		free(currInode);
-		currInode = NULL;
-		return -1;
+	// Read in our 256 imap pointers... each with 16 inode refs; 4096 max inums
+	int ckpr_ptrs[256];
+	if(read(fd, &ckpr_ptrs, sizeof(int) * 256) < 0){ return -1; }
+	int imap_index = inum / 16;
+	int imap_loc = ckpr_ptrs[imap_index];
+
+	// We found our imap piece; now use modulus to find one of 16 inode refs
+	int inode_index = inum % 16;
+	// Each imapIdx is of 4 bytes; multiply by 4
+	int imap_ptrs[16];
+	lseek(fd, imap_loc, SEEK_SET);
+	if(read(fd, &imap_ptrs, sizeof(int) * 16) < 0){ return -1; }
+
+	// Now read from the imap piece to find the inode_loc
+	int inode_loc = imap_ptrs[inode_index];
+	// Confirm the inode_loc is valid
+	if (inode_loc <= 0 || inode_loc > eol_ptr) { return -1; }
+
+	// Read inode to determine size / type
+	Inode_t* curr_inode = malloc(sizeof(Inode_t));
+	lseek(fd, inode_loc, SEEK_SET);
+	if (read(fd, curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
+	if (curr_inode->type == MFS_DIRECTORY) { free(curr_inode); return -1; }
+
+	// Determine the new file size
+	int inode_ptrs[14];
+	lseek(fd, (inode_loc + sizeof(Inode_t)), SEEK_SET);
+	if (read(fd, &inode_ptrs, sizeof(int) * 14) < 0) { free(curr_inode); return -1; }
+
+	int data_size = strlen(buffer);
+	// printf("previous size: %d\n", curr_inode->size);
+	if(inode_ptrs[block] == 0){
+		// The buffer is the size if the inode was empty
+		curr_inode->size += data_size;
+	} else {
+		// If the block already existed...
+		char old_buffer[MFS_BLOCK_SIZE];
+		lseek(fd, inode_ptrs[block], SEEK_SET);
+		if (read(fd, &old_buffer, MFS_BLOCK_SIZE) < 0 ) { free(curr_inode); return -1; }
+		// printf("old buffer:\n%s\n", old_buffer);
+		// Subtract the size of the old block version
+		curr_inode->size -= strlen(old_buffer);
+		// Add the size of the new block version
+		curr_inode->size += data_size;
 	}
-	// setting it to block
-	lseek(fd, location+sizeof(Inode_t)+(block)*sizeof(int), SEEK_SET); 
-	int iNodePtr = -1;
-	if (read(fd, &iNodePtr, sizeof(int)) < 0) {
-		free(currInode);
-		currInode = NULL;
-		return -1;
-	}
-	if (iNodePtr == 0) return -1;
-	// We can only read files
-	if (currInode->type == MFS_DIRECTORY) return -1;
+	// printf("new size: %d\n", curr_inode->size);
 
-	// if block was not in use, increase the size of inode
-	// write data to the block... 
+	// Set the pointer past the current 64 byte imap piece it points to:
+	// (in Brandon's implementation the inode is last)
+	// 1-append the buffer to a new data block (should we be writing MFS_BLOCK_SIZE?)
+	lseek(fd, eol_ptr, SEEK_SET);
+	if(write(fd, buffer, data_size) < 0){ free(curr_inode); return -1; }
+	// Update the inode block pointer
+	inode_ptrs[block] = eol_ptr;
+	// Set the eol_ptr just past the data block we just wrote (to the inode)
+	eol_ptr += data_size;
 
-	// int size = -1;
-	// if (block > (currInode->size - 1)/MFS_BLOCK_SIZE) {
-	// 	size = MFS_BLOCK_SIZE;
-	// } else if (block == (currInode->size - 1)/MFS_BLOCK_SIZE) {
-	// 	size = (currInode->size)%MFS_BLOCK_SIZE ;
-	// }
+	// 2-append the updated inode which points to the new data block
+	// Record the new position of our inode (in our imap)
+	imap_ptrs[inode_index] = eol_ptr;
+	if (write(fd, &curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
+	if (write(fd, &inode_ptrs, sizeof(int) * 14)) { free(curr_inode); return -1; }
+	eol_ptr += (sizeof(Inode_t) + (sizeof(int) * 14)); // Size of inode + ptrs
 
-	// lseek(fd, iNodePtr, SEEK_SET);
-		
-	// free(currInode);
-	// currInode = NULL;
+	// 3-append the imap which now points to the new inode
+	if(write(fd, &imap_ptrs, sizeof(int) * 16) < 0){ return -1; }
+	// Update our imap location
+	imap_loc = eol_ptr;
+	eol_ptr += (sizeof(int) * 16); // Size of imap
 
-	// if (read(fd, buffer, 4096) < 0) {
-	// 	return -1;
-	// }
-			
-	
+	// 4-updated the checkpoint region which now points to the new imap
+	lseek(fd, (imap_index * 4) + 4, SEEK_SET);
+	if(write(fd, &imap_loc, sizeof(int)) < 0){ return -1; }
+
+	// 5-update our end of log ptr to point to the new imap
+	lseek(fd, 0, SEEK_SET);
+	if(write(fd, &eol_ptr, sizeof(int)) < 0){ return -1; }
+
+	fsync(fd);
+	free(curr_inode);
+
 	return 0;
 } 
 
@@ -718,6 +764,11 @@ int main(int argc, char *argv[]){
 
 	srv_Init();
 	srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
+
+	char buffer[MFS_BLOCK_SIZE];
+	sprintf(buffer, "include <stdio.h>xxxxxxxxxx");
+	srv_Write(3, buffer, 0);
+
 	// MFS_Stat_t m;
 	// srv_Stat(1, &m);
 	// printf ("size of inode 1 is: %d\n",m.size);
@@ -737,7 +788,7 @@ int main(int argc, char *argv[]){
 	// printf("/it's is inum: %d\n", inum); // we expect 6
 	// inum = srv_Lookup(2, "helloworld.c");
 	// printf("/helloworld is inum: %d\n", inum); // we expect 6
-	// char* buffer = malloc(4096*sizeof(char));
+	// char* buffer = malloc(MFS_BLOCK_SIZE*sizeof(char));
 	// int rc = srv_Read(3, buffer, 0);
 	// if (rc == 0) {
 	//   printf("From srv_Read\n");
@@ -746,83 +797,3 @@ int main(int argc, char *argv[]){
 	// }
 	return 0;
 }
-
-/*// Get max inum if we don't have one already
-if(inumMax == 0){
-	inumMax = get_max_inum();
-	// int loc = get_inode_location(inumMax);
-	// printf("max_inum: %d, loc: %d\n", inumMax, loc);
-}*/
-
-/**
- * Alternative way to get max inum; save it for now.
- */
-/*int get_max_inum(){
-	int next_inum = 0;
-	int loc = 1;
-	int max = 0;
-	while(loc > 0){ 
-		loc = get_inode_location(next_inum);
-		if(loc <= 0) break;
-		if(next_inum > max) max = next_inum;
-		max = max_dir_inum(loc, max);
-		// printf("max inum: %d\n", max);
-		next_inum++;
-	}
-	return max;
-}*/
-
-/*int max_dir_inum(int location, int max_inum){
-	lseek(fd, location, SEEK_SET);
-	Inode_t* dirIMap = malloc(sizeof(Inode_t));
-	if (read(fd, dirIMap, sizeof(Inode_t)) < 0) {
-		free(dirIMap);
-		dirIMap = NULL;
-		return max_inum;
-	}
-
-	// Parent inode numbers can only belong to directories
-	if (dirIMap->type != MFS_DIRECTORY) {
-		free(dirIMap);
-		dirIMap = NULL;
-		return max_inum;
-	}
-
-	free(dirIMap);
-	dirIMap = NULL;
-
-	int iNodePtr = -1;
-	int i = 0;
-	MFS_DirEnt_t dirEntry;
-
-	// Read dir inode structure: 14x pointers to 64 byte directory blocks
-	for (; i < 14; ++i) {
-		lseek(fd, (location + sizeof(Inode_t) + i * sizeof(int)), SEEK_SET);
-		iNodePtr = -1;
-		if (read(fd, &iNodePtr, sizeof(int)) < 0) {
-			return max_inum;
-		}
-		if (iNodePtr == 0) {
-			continue; 
-		}
-		// printf ("iNode Ptr = %d\n",iNodePtr);
-		lseek(fd, (iNodePtr), SEEK_SET);
- 
-		int count = 0;
-		while(count != 64) {
-			++count;
-			// Reading a directory entry moves the file pointer forward to the next
-			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
-				continue;
-			}
-			// Ignore invalid inode numbers
-			if (dirEntry.inum == -1) {
-				continue;
-			}
-			// printf ("'%s': %d\n", dirEntry.name, dirEntry.inum);
-			if(dirEntry.inum > max_inum) max_inum = dirEntry.inum;
-		}
-	}
-	// printf("max inum: %d\n", max_inum);
-	return max_inum;
-}*/
