@@ -515,25 +515,22 @@ int srv_Write(int inum, char *buffer, int block){
 	// Set the pointer past the current 64 byte imap piece it points to:
 	// (in Brandon's implementation the inode is last)
 	// 1-append the buffer to a new data block (should we be writing MFS_BLOCK_SIZE?)
-	lseek(fd, eol_ptr, SEEK_SET);
+	lseek(fd, eol_ptr, SEEK_SET); // <--data goes to end of log...
 	if(write(fd, buffer, data_size) < 0){ free(curr_inode); return -1; }
-	// Record the new position of our inode (in our imap)
-	imap_ptrs[inode_index] = eol_ptr;
+	// Record the new position of our data block
+	inode_ptrs[block] = eol_ptr;
 	// Set the eol_ptr just past the data block we just wrote (to the inode)
-	eol_ptr += data_size;
+	eol_ptr += data_size; // <--this is now our inode location...
 
 	// 2-append the updated inode which points to the new data block
-	// lseek(fd, inode_ptrs[block], SEEK_SET);
 	if(write(fd, &curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
-	// lseek(fd, inode_ptrs[block] + sizeof(Inode_t), SEEK_SET);
 	if(write(fd, &inode_ptrs, (sizeof(int) * 14)) < 0) { free(curr_inode); return -1; }
 	// Point the imap to our new inode
 	imap_ptrs[inode_index] = eol_ptr;
 	eol_ptr += (sizeof(Inode_t) + (sizeof(int) * 14)); // Size of inode + ptrs
 
 	// 3-append the imap which now points to the new inode
-	imap_loc = eol_ptr;
-	// lseek(fd, imap_loc, SEEK_SET);
+	imap_loc = eol_ptr; // <--need to point checkpoint region to imap piece
 	if(write(fd, &imap_ptrs, sizeof(int) * 16) < 0){ return -1; }
 	// Update our imap location
 	eol_ptr += (sizeof(int) * 16); // Size of imap
@@ -541,6 +538,11 @@ int srv_Write(int inum, char *buffer, int block){
 	// 4-updated the checkpoint region which now points to the new imap
 	lseek(fd, (imap_index * 4) + 4, SEEK_SET);
 	if(write(fd, &imap_loc, sizeof(int)) < 0){ return -1; }
+	printf("imap_loc XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX: %d\n", imap_loc);
+	lseek(fd, (imap_index * 4) + 4, SEEK_SET);
+	int temp;
+	read(fd, &temp, 4);
+	printf("TEMP XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX: %d\n", temp);
 
 	// 5-update our end of log ptr to point to the new imap
 	lseek(fd, 0, SEEK_SET);
