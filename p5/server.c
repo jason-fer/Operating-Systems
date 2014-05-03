@@ -517,23 +517,23 @@ int srv_Write(int inum, char *buffer, int block){
 	// 1-append the buffer to a new data block (should we be writing MFS_BLOCK_SIZE?)
 	lseek(fd, eol_ptr, SEEK_SET);
 	if(write(fd, buffer, data_size) < 0){ free(curr_inode); return -1; }
-	// Update the inode block pointer
-	inode_ptrs[block] = eol_ptr;
+	// Record the new position of our inode (in our imap)
+	imap_ptrs[inode_index] = eol_ptr;
 	// Set the eol_ptr just past the data block we just wrote (to the inode)
 	eol_ptr += data_size;
 
 	// 2-append the updated inode which points to the new data block
-	// Record the new position of our inode (in our imap)
+	// lseek(fd, inode_ptrs[block], SEEK_SET);
+	if(write(fd, &curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
+	// lseek(fd, inode_ptrs[block] + sizeof(Inode_t), SEEK_SET);
+	if(write(fd, &inode_ptrs, (sizeof(int) * 14)) < 0) { free(curr_inode); return -1; }
+	// Point the imap to our new inode
 	imap_ptrs[inode_index] = eol_ptr;
-	lseek(fd, inode_ptrs[block], SEEK_SET);
-	if (write(fd, &curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
-	lseek(fd, inode_ptrs[block] + sizeof(Inode_t), SEEK_SET);
-	if (write(fd, &inode_ptrs, sizeof(int) * 14)) { free(curr_inode); return -1; }
 	eol_ptr += (sizeof(Inode_t) + (sizeof(int) * 14)); // Size of inode + ptrs
 
 	// 3-append the imap which now points to the new inode
 	imap_loc = eol_ptr;
-	lseek(fd, imap_loc, SEEK_SET);
+	// lseek(fd, imap_loc, SEEK_SET);
 	if(write(fd, &imap_ptrs, sizeof(int) * 16) < 0){ return -1; }
 	// Update our imap location
 	eol_ptr += (sizeof(int) * 16); // Size of imap
