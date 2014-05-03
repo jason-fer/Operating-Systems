@@ -4,10 +4,150 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-char* filename = "example.img";
+// char* filename = "example.img";
+char* filename = "bare.img";
 int* port;
 int fd = 0;
 int inumMax = 0;
+
+// Dump contents of the current file
+void dump_file_inode(int fd, int file_loc, int file_size){
+	int inodes[14];
+	int i = 0;
+	char buffer[4096];
+
+	if(file_size <= 0){ 
+		printf("file_loc:%d (empty file)\n", file_loc);
+	}
+
+	lseek(fd, (file_loc + sizeof(Inode_t)), SEEK_SET);
+	if (read(fd, &inodes, sizeof(int) * 14) < 0) { return; }
+
+	// Read dir inode structure: 14x pointers to 64 byte directory blocks
+	for (; i < 14; ++i) {
+		if(inodes[i] == 0) continue; // inode not in use!
+		printf("inode:%d, loc:%d\n", i, inodes[i]);
+		lseek(fd, inodes[i], SEEK_SET);
+ 
+		while(file_size > 0) {
+			// Keep reading forward on file...
+			if(file_size >= 4096){
+				if (read(fd, &buffer, 4096) < 0) { continue; }
+			} else {
+				if (read(fd, &buffer, file_size) < 0) { continue; }
+			}
+			printf("inode:%d, data block contents: \n%s\n",i, buffer);
+			file_size -= 4096;
+		}
+	}
+
+	return;
+}
+
+// Dump contents of the current dir
+void dump_dir_inode(int fd, int dir_loc){
+	int inodes[14];
+	int i = 0;
+	MFS_DirEnt_t dirEntry;
+
+	lseek(fd, (dir_loc + sizeof(Inode_t)), SEEK_SET);
+	if (read(fd, &inodes, sizeof(int) * 14) < 0) { return; }
+
+	// Read dir inode structure: 14x pointers to 64 byte directory blocks
+	for (; i < 14; ++i) {
+		if(inodes[i] == 0) continue; // inode not in use!
+		printf("inode:%d, loc:%d\n", i, inodes[i]);
+		lseek(fd, inodes[i], SEEK_SET);
+ 
+		int count = 0;
+		while(count != 64) {
+			++count;
+			// Reading a directory entry moves the file pointer forward to the next
+			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) { continue; }
+			// Ignore invalid inode numbers
+			if (dirEntry.inum == -1) { continue; }
+			printf("inum:%d, dir:%s\n", dirEntry.inum, dirEntry.name);
+		}
+	}
+
+	return;
+}
+
+// Generate a log dump of the file structure
+int log_dump(int pinum, int type, char *name){
+	// Set pointer at the front of the file
+	lseek(fd, 0, SEEK_SET);
+	printf("Server:: ################# Log Dump #################\n");
+
+	// Read result into the address of the checkPointVal
+	int ckpt_rg = 0;
+	int rc;
+	int i = 0;
+	int j = 0;
+	int count = 0; //, prev = 0;
+	for (; i <= 256; i++){
+		// Make sure we read from the right position...
+		lseek(fd, i * 4, SEEK_SET);
+		rc = read(fd, &ckpt_rg, sizeof(int));
+		if(i == 0){
+			printf("1st checkpoint ptr: %d\n", ckpt_rg);
+			continue;
+		}
+		// prev = ckpt_rg;
+		count++;
+		// printf("ckpt_rg %d: %d, ckpt_rg - prev:%d\n", i, ckpt_rg, ckpt_rg - prev);
+		if(count > 4) break;
+		// Find the imap piece
+		// lseek(fd, ckpt_rg, SEEK_SET);
+		// Now we read from the checkpoint region to find where the imap piece is
+		int inode_loc = 0;
+		// Dump the contents of this imap:
+		int read_loc = ckpt_rg;
+		for(j = 0; j < 16; j++){ // Dump the imap structure
+			// Force read in the right position...
+			lseek(fd, read_loc, SEEK_SET);
+			read_loc += 4; // increment read location..
+			if (read(fd, &inode_loc, 4) < 0) {
+				printf("error!!!\n");
+				exit(0);
+			}
+			int the_imap = i - 1;
+			int the_inum = (j + ((i - 1) * 16));
+
+			if(inode_loc == 0) continue;
+			// printf("inode_loc: %d, ckpt_rg: %d, inum: %d, j: %d, i: %d \n", inode_loc, (ckpt_rg - 64) + (j * 4), the_inum, j, i);
+			printf("inode_loc: %d, ckpt_rg: %d, inum: %d, imap piece#: %d \n", inode_loc, (ckpt_rg - 64) + (j * 4), the_inum, the_imap);
+
+			lseek(fd, inode_loc, SEEK_SET);
+			Inode_t* curr_inode = malloc(sizeof(Inode_t));
+
+			if (read(fd, curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); continue; }
+
+			// Parent inode numbers can only belong to directories
+			if (curr_inode->type != MFS_DIRECTORY) { // It's a file
+				// printf("inode_loc:%d, file size:%d\n", inode_loc, curr_inode->size);
+				dump_file_inode(fd, inode_loc, curr_inode->size);
+			} else { // It's a directory
+				dump_dir_inode(fd, inode_loc);
+			}
+
+			free(curr_inode);
+
+			if(inode_loc == 0){
+				// printf("our next inode goes here!!!\n"); return 0;
+				// This becomes our next inode; we need to allocate memory here... 128 bytes?
+				// 64 bytes for the inode 
+				// 64 bytes for the disk or directory
+				// next imap piece if applicable
+				// update the checkpoint region
+				// init all the entries in the inode & set the size to zero & set the type
+			}
+			
+		}
+	}
+
+	return -1;
+}
 
 /**
  * portnum: the port number that the file server should listen on.
@@ -175,9 +315,9 @@ int srv_Read(int inum, char *buffer, int block) {
 
 	int location = get_inode_location(inum);
 
-    if (location < 0) {
-      return -1;
-    }
+	if (location < 0) {
+	  return -1;
+	}
 
 	Inode_t* currInode = malloc(sizeof(Inode_t));
 
@@ -283,9 +423,9 @@ int srv_Stat(int inum, MFS_Stat_t *m){
 
 	int location = get_inode_location(inum);
 
-    if (location < 0) {
-      return -1;
-    }
+	if (location < 0) {
+	  return -1;
+	}
 
 	Inode_t* currInode = malloc(sizeof(Inode_t));
 
@@ -296,11 +436,11 @@ int srv_Stat(int inum, MFS_Stat_t *m){
 		currInode = NULL;
 		return -1;
 	}
-    
-    m->size = currInode->size;
-    m->type = currInode->type;
-    free(currInode);
-    currInode = NULL;
+	
+	m->size = currInode->size;
+	m->type = currInode->type;
+	free(currInode);
+	currInode = NULL;
 	return 0;
 }
 
@@ -362,57 +502,6 @@ int srv_Write(int inum, char *buffer, int block){
 	return 0;
 } 
 
-int set_next_inum(int pinum, int type, char *name){
-	// Set pointer at the front of the file
-	lseek(fd, 0, SEEK_SET);
-	printf("Server:: finding max inum\n");
-
-	// Read result into the address of the checkPointVal
-	int ckpt_rg = 0;
-	int rc;
-	int i = 0;
-	int j = 0;
-	int count = 0; //, prev = 0;
-	for (; i <= 256; i++){
-		// Make sure we read from the right position...
-		lseek(fd, i * 4, SEEK_SET);
-		rc = read(fd, &ckpt_rg, sizeof(int));
-		if(i == 0){
-			printf("end of log address: %d\n", ckpt_rg);
-			continue;
-		}
-		// prev = ckpt_rg;
-		count++;
-		// printf("ckpt_rg %d: %d, ckpt_rg - prev:%d\n", i, ckpt_rg, ckpt_rg - prev);
-		if(count > 4) break;
-		// Find the imap piece
-		lseek(fd, ckpt_rg, SEEK_SET);
-		// Now we read from the checkpoint region to find where the imap piece is
-		int inode_loc = 0;
-		// Dump the contents of this imap:
-		for(j = 0; j < 16; j++){
-			if (read(fd, &inode_loc, 4) < 0) {
-				printf("error!!!\n");
-				exit(0);
-			}
-			int the_imap = i - 1;
-			int the_inum = (j + ((i - 1) * 16));
-			// printf("inode_loc: %d, ckpt_rg: %d, inum: %d, j: %d, i: %d \n", inode_loc, (ckpt_rg - 64) + (j * 4), the_inum, j, i);
-			printf("inode_loc: %d, ckpt_rg: %d, inum: %d, imap#: %d \n", inode_loc, (ckpt_rg - 64) + (j * 4), the_inum, the_imap);
-			if(inode_loc == 0){
-				// This becomes our next inode; we need to allocate memory here... 128 bytes?
-				// 64 bytes for the inode 
-				// 64 bytes for the disk or directory
-				// update the checkpoint region
-				// init all the entries in the inode & set the size to zero & set the type
-			}
-			
-		}
-	}
-
-	return -1;
-}
-
 /**
  * Makes a file (type == MFS_REGULAR_FILE) or directory (type == MFS_DIRECTORY) 
  * in the parent directory specified by pinum of name *name. Returns 0 on 
@@ -435,7 +524,7 @@ int srv_Creat(int pinum, int type, char *name){
 		return -1;
 	}
 
-	set_next_inum(pinum, type, name);
+	log_dump(pinum, type, name);
 	return 0;
 	exit(0);
 	
@@ -629,16 +718,16 @@ int main(int argc, char *argv[]){
 
 	srv_Init();
 	srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
-    // MFS_Stat_t m;
-    // srv_Stat(1, &m);
-    // printf ("size of inode 1 is: %d\n",m.size);
-    // printf ("type of inode 1 is: %d\n",m.type);
-    // srv_Stat(0, &m);
-    // printf ("size of inode 0 is: %d\n",m.size);
-    // printf ("type of inode 0 is: %d\n",m.type);
-    // srv_Stat(3, &m);
-    // printf ("size of inode 3 is: %d\n",m.size);
-    // printf ("type of inode 3 is: %d\n",m.type);
+	// MFS_Stat_t m;
+	// srv_Stat(1, &m);
+	// printf ("size of inode 1 is: %d\n",m.size);
+	// printf ("type of inode 1 is: %d\n",m.type);
+	// srv_Stat(0, &m);
+	// printf ("size of inode 0 is: %d\n",m.size);
+	// printf ("type of inode 0 is: %d\n",m.type);
+	// srv_Stat(3, &m);
+	// printf ("size of inode 3 is: %d\n",m.size);
+	// printf ("type of inode 3 is: %d\n",m.type);
 	// Can we find the base dir?
 	// inum = srv_Lookup(0, "dir");
 	// printf("/dir is inum: %d\n", inum); // we expect 1
