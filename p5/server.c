@@ -454,6 +454,7 @@ int srv_Stat(int inum, MFS_Stat_t *m){
  * block, not a regular file (because you can't write to directories).
  */
 int srv_Write(int inum, char *buffer, int block){
+	// printf("*****************************buffer: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n%s\n", buffer);
 	printf("SERVER:: you called MFS_Write\n");
 	// Check for valid block: 0 to 13 or invalid inum
 	if(block < 0 || block > 13 || inum < 0 || inum >= MFS_BLOCK_SIZE) return -1;
@@ -524,14 +525,17 @@ int srv_Write(int inum, char *buffer, int block){
 	// 2-append the updated inode which points to the new data block
 	// Record the new position of our inode (in our imap)
 	imap_ptrs[inode_index] = eol_ptr;
+	lseek(fd, inode_ptrs[block], SEEK_SET);
 	if (write(fd, &curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
+	lseek(fd, inode_ptrs[block] + sizeof(Inode_t), SEEK_SET);
 	if (write(fd, &inode_ptrs, sizeof(int) * 14)) { free(curr_inode); return -1; }
 	eol_ptr += (sizeof(Inode_t) + (sizeof(int) * 14)); // Size of inode + ptrs
 
 	// 3-append the imap which now points to the new inode
+	imap_loc = eol_ptr;
+	lseek(fd, imap_loc, SEEK_SET);
 	if(write(fd, &imap_ptrs, sizeof(int) * 16) < 0){ return -1; }
 	// Update our imap location
-	imap_loc = eol_ptr;
 	eol_ptr += (sizeof(int) * 16); // Size of imap
 
 	// 4-updated the checkpoint region which now points to the new imap
@@ -763,11 +767,12 @@ int main(int argc, char *argv[]){
 	// int inum;
 
 	srv_Init();
-	srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
 
 	char buffer[MFS_BLOCK_SIZE];
-	sprintf(buffer, "include <stdio.h>xxxxxxxxxx");
+	sprintf(buffer, "##include <stdio.h>xxxxxxxxxx");
 	srv_Write(3, buffer, 0);
+
+	srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
 
 	// MFS_Stat_t m;
 	// srv_Stat(1, &m);
