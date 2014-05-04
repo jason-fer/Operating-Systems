@@ -74,6 +74,7 @@ int main(int argc, char *argv[]){
   inum = 1;
   block = 1;
   sprintf(buffer, "An awesome message");
+
   // Confirm the server sends a success response in each case
   test_init();
   test_creat();
