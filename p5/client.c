@@ -62,29 +62,19 @@ void test_shutdown(){
  */
 int main(int argc, char *argv[]){
 
-  // generic values (to make the compiler happy)
-  my_dir = malloc(sizeof(*my_dir));
-  my_file = malloc(sizeof(*my_file));
-  my_dir->type = MFS_DIRECTORY;
-  my_dir->size = 64;
-  my_file->type = MFS_DIRECTORY;
-  my_file->size = 64;
-  pinum = 1;
-  type = 1;
-  inum = 1;
-  block = 1;
-  sprintf(buffer, "An awesome message");
 
-  // Confirm the server sends a success response in each case
-  test_init();
-  test_creat();
-  test_write();
-  test_read();
-  test_stat();
-  test_lookup();
-  test_unlink();
-  test_shutdown();
-  printf("All client tests passed\n");
+   // int sd=atoi(argv[1]);
+   // /* int sd = UDP_Open(0); */
+   // /* assert(sd > -1); */
 
+   //  struct sockaddr_in saddr;
+
+   //  int rc = MFS_Init(argv[2],sd);
+   //  assert(rc==0);
+
+   //  char message[BUFFER_SIZE];
+   //  sprintf(message, "hello world");
+
+   //  return 0;
 }
 
