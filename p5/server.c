@@ -4,7 +4,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-char* filename = "example.img";
+char* filename = NULL;
+// char* filename = "example.img";
 // char* filename = "bare.img";
 int* port;
 int fd = 0;
@@ -172,7 +173,7 @@ void getargs(int *port, int argc, char *argv[]){
 	*port = atoi(argv[1]);
 	filename = strdup(argv[2]);
 	// printf("port: %d\n", *port);
-	// printf("file image name: %s\n", *filename);
+	// printf("file-image name: %s\n", filename);
 }
 
 /**
@@ -1074,7 +1075,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 			break;
 	}
 
-	// printf("reply: %s\n", m.reply);
+	printf("reply: %s\n", m.reply);
 	return UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
 }
 
@@ -1083,7 +1084,7 @@ void start_server(int argc, char *argv[]){
 
 	getargs(&port, argc, argv); 
 	sd = UDP_Open(port); 
-	assert(sd > -1); 
+	assert(sd > -1);
 
 	printf("SERVER:: waiting in loop\n");
 

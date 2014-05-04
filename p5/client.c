@@ -3,6 +3,7 @@
 #include "udp.h"
 #include "mfs.h"
 
+
 char *name = "tempfile";
 int pinum, type, inum, block, response;
 char buffer[4096];
