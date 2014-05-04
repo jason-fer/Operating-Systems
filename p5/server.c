@@ -4,8 +4,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-char* filename = "example.img";
+/* char* filename = "example.img"; */
 // char* filename = "bare.img";
+char* filename;
 int* port;
 int fd = 0;
 int inumMax = 0;
@@ -165,6 +166,7 @@ int dump_log(){
  * initialize it to include an empty root directory.
  */
 void getargs(int *port, int argc, char *argv[]){
+  
 	if (argc != 3){
 		fprintf(stderr, "Usage: %s [portnum] [file-system-image]\n", argv[0]);
 		exit(1);
@@ -879,7 +881,7 @@ void fs_Shutdown(){
  * shutdown by calling exit(0). This interface will mostly be used for testing 
  * purposes.
  */
-/*int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
+int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 		// Notify client we are shutting down; this is the only method completely 
 		// tied to a client call.
 		rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
@@ -887,9 +889,9 @@ void fs_Shutdown(){
 		fs_Shutdown();
 		// This will never happen....
 		return 0;
-}*/
+}
 
-/*int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
+int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 
 	switch(m.method){
 		case M_Init:
@@ -933,16 +935,16 @@ void fs_Shutdown(){
 	printf("reply: %s\n", m.reply);
 	return 0;
 	return UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
-}*/
+}
 
-/*void start_server(int argc, char *argv[]){
+void start_server(int argc, char *argv[]){
 	 int sd, port; 
 	
 	 getargs(&port, argc, argv); 
 	 sd = UDP_Open(port); 
 	 assert(sd > -1); 
 
-	printf("SERVER:: waiting in loop\n");
+     printf("SERVER:: waiting in loop\n");
 
 	 while (1) { 
 		struct sockaddr_in s; 
@@ -953,7 +955,7 @@ void fs_Shutdown(){
 			printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
 		}
 	 } 
-}*/
+}
 
 /**
  * E.g. usage: ./server 10000 tempfile
@@ -961,14 +963,14 @@ void fs_Shutdown(){
 int main(int argc, char *argv[]){
 
 	// Disable this to test methods without running the server...
-	// start_server(argc, argv);
+	start_server(argc, argv);
 
 	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
-	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
+	// Note: Unused entries in the inode map and unused direct pointers in the inodes should
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
 	// int inum;
 
-	srv_Init();
+	/* srv_Init(); */
 
 	// dump_log();
 
@@ -977,9 +979,9 @@ int main(int argc, char *argv[]){
 	// int rs = srv_Write(3, buffer, 0);
 
 	// int rs = srv_Unlink(6, "turtles"); // should fail
-	int rs = srv_Unlink(0, "dir");
-	// assert(rs >= 0);
-	dump_log();
+	/* int rs = srv_Unlink(0, "dir"); */
+	/* // assert(rs >= 0); */
+	/* dump_log(); */
 
 	// srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
 
