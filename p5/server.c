@@ -727,7 +727,7 @@ int srv_Unlink(int pinum, char *name){
 	int dir_entry_block = 0;
 	for (; i < 14; ++i) {
 		if(inode_ptrs[i] == 0) continue; // inode not in use!
-		// printf("inode:%d, loc:%d\n", i, inode_ptrs[i]);
+		printf("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx inode:%d, loc:%d\n", i, inode_ptrs[i]);
 		lseek(fd, inode_ptrs[i], SEEK_SET);
  
 		int count = 0;
@@ -801,6 +801,7 @@ int srv_Unlink(int pinum, char *name){
 		// printf("dir_entries[%d]: dir_entry.inum:%d, dir_entry.name:%s \n", i, dir_entries[i].inum, dir_entries[i].name); 
 		if (strcmp(dir_entries[i].name, name) == 0) {
 			// printf("entry to wipe!! inum:%d, dir:%s\n", dir_entry.inum, dir_entry.name);
+			// wipe out the parent directory entry by setting the inum to -1
 			dir_entries[i].inum = -1;
 			sprintf(dir_entries[i].name, "");
 			unlink_success = 1;
@@ -809,48 +810,37 @@ int srv_Unlink(int pinum, char *name){
 	}
 	assert(unlink_success == 1);
 
-	// printf("\nDid it work????????\n\n");
-	// for (i = 0; i < 64; ++i) {
-	// 	if(dir_entries[i].inum == -1) continue;	
-	// 	printf("dir_entries[%d]: dir_entry.inum:%d, dir_entry.name:%s \n", i, dir_entries[i].inum, dir_entries[i].name); 
-	// 	if (strcmp(dir_entries[i].name, name) == 0) {
-	// 		printf("failed to wipe!! %s:%d \n", dir_entry.name, dir_entry.inum);
-	// 	}
-	// }
-
-	// exit(0);
-
 	// Simple if both entries are in the same imap; a little more tricky if the
 	// parent is in one imap & the directory was in another
 	// Naive implementation: assume both inums are in the same imap piece
 	// @todo: add edge-case logic to handle scenario when inums are not in the same imap piece!
 	assert(imap_index == (dir_entry.inum / 16));
-
 	int unlink_inode_index = dir_entry.inum % 16;
-	// printf("unlink_inode_index:%d, inode_index:%d\n", unlink_inode_index, inode_index);
-
-	// dir_entry.inum <-- set this inum location to zero in the parent imap
-	// wipe out the parent directory entry by setting the inum to -1
 
 	// 1-append the new data block
 	lseek(fd, eol_ptr, SEEK_SET); // <--data goes to end of log...
 	if(write(fd, dir_entries, MFS_BLOCK_SIZE) < 0){ free(curr_inode); return -1; }
-	// Record the new position of our data block
+	// Point one of the 14x inode data-block to our new data block
 	inode_ptrs[dir_entry_block] = eol_ptr;
-	// Set the eol_ptr just past the data block we just wrote (to the inode)
-	eol_ptr += MFS_BLOCK_SIZE; // <--this is now our inode location...
 
-	// 2-append the updated inode which points to the new data block
+	printf("xxxxxxxxxxxxxxxxxxxxxxxx data_block: %d\n", eol_ptr);
+
+	// 2-append the updated inode & ptrs which points to the new data block
 	if(write(fd, &curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
 	if(write(fd, &inode_ptrs, (sizeof(int) * 14)) < 0) { free(curr_inode); return -1; }
+	// Set the eol_ptr just past the data block we just wrote (to the inode)
+	eol_ptr += MFS_BLOCK_SIZE; // <--this is now our inode location...
 	// Point the imap to our new inode
 	imap_ptrs[inode_index] = eol_ptr;
+	printf("xxxxxxxxxxxxxxxxxxxxxxxx imap_ptrs[inode_index]: %d\n", imap_ptrs[inode_index]);
 	// Zero out the location to our inode which is no longer valid
 	imap_ptrs[unlink_inode_index] = 0;
-	eol_ptr += (sizeof(Inode_t) + (sizeof(int) * 14)); // Size of inode + ptrs
+
 	// 3-append the imap which now points to the new inode
-	imap_loc = eol_ptr; // <--need to point checkpoint region to imap piece
+	eol_ptr += (sizeof(Inode_t) + (sizeof(int) * 14)); // Size of inode + ptrs
+	imap_loc = eol_ptr; // <--point the checkpoint region to imap piece
 	if(write(fd, &imap_ptrs, sizeof(int) * 16) < 0){ return -1; }
+
 	// Update our imap location
 	eol_ptr += (sizeof(int) * 16); // Size of imap
 
@@ -858,9 +848,12 @@ int srv_Unlink(int pinum, char *name){
 	lseek(fd, (imap_index * 4) + 4, SEEK_SET);
 	if(write(fd, &imap_loc, sizeof(int)) < 0){ return -1; }
 
+	printf("xxxxxxxxxxxxxxxxxxxxxxxx imap_loc: %d\n", imap_loc);
+
 	// 5-update our end of log ptr to point to the new imap
 	lseek(fd, 0, SEEK_SET);
 	if(write(fd, &eol_ptr, sizeof(int)) < 0){ return -1; }
+	printf("xxxxxxxxxxxxxxxxxxxxxxxx eol_ptr: %d\n", eol_ptr);
 
 	fsync(fd);
 	free(curr_inode);
