@@ -38,7 +38,7 @@ void dump_file_inode(int fd, int file_loc, int file_size){
 		}
 		// XXXXXXXXXXXXXXXXXXXXXX TEMP XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 		while(file_size > 0) {
-			printf("curr file size: %d\n", file_size);
+			// printf("curr file size: %d\n", file_size);
 			// Keep reading forward on file...
 			if(file_size >= MFS_BLOCK_SIZE){
 				if (read(fd, &buffer, MFS_BLOCK_SIZE) < 0) { continue; }
@@ -478,6 +478,7 @@ int srv_Write(int inum, char *buffer, int block){
 	int ckpr_ptrs[256];
 	if(read(fd, &ckpr_ptrs, sizeof(int) * 256) < 0){ return -1; }
 	int imap_index = inum / 16;
+	// printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> imap index: %d\n", imap_index);
 	int imap_loc = ckpr_ptrs[imap_index];
 
 	// We found our imap piece; now use modulus to find one of 16 inode refs
@@ -497,36 +498,36 @@ int srv_Write(int inum, char *buffer, int block){
 	lseek(fd, inode_loc, SEEK_SET);
 	if (read(fd, curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
 	if (curr_inode->type == MFS_DIRECTORY) { free(curr_inode); return -1; }
-	printf("file sizexxxxxxxxxxx: %d\n", curr_inode->size);
+	// printf("file sizexxxxxxxxxxx: %d\n", curr_inode->size);
+	
 	// Determine the new file size
 	int inode_ptrs[14];
 	lseek(fd, (inode_loc + sizeof(Inode_t)), SEEK_SET);
 	if (read(fd, &inode_ptrs, sizeof(int) * 14) < 0) { free(curr_inode); return -1; }
 
+	// printf("previous file size:%d\n", curr_inode->size);
+
+	// Determine the file size
+	int file_size = 0;
 	int data_size = strlen(buffer);
-	// printf("previous size: %d\n", curr_inode->size);
-	if(inode_ptrs[block] == 0){
-		// The buffer is the size if the inode was empty
-		curr_inode->size += data_size;
-	} else {
-		// If the block already existed...
-		char old_buffer[MFS_BLOCK_SIZE];
-		lseek(fd, inode_ptrs[block], SEEK_SET);
-		if (read(fd, &old_buffer, MFS_BLOCK_SIZE) < 0 ) { free(curr_inode); return -1; }
-		// printf("old buffer:\n%s\n", old_buffer);
-		// Subtract the size of the old block version
-		int old_buf_size = strlen(old_buffer);
-		printf("old buffer size: %s\n", old_buffer);
-		assert(old_buf_size >= 0);
-		curr_inode->size = curr_inode->size - old_buf_size;
-		// Add the size of the new block version
-		curr_inode->size += data_size;
+	// Add the new buffer to the total file size
+	file_size += data_size;
+	char tmp_buffer[MFS_BLOCK_SIZE];
+	for (int i = 0; i < 14; i++){
+		// This is the block we are replacing; ignore it.
+		if (i == block || inode_ptrs[i] <= 0) continue;
+		lseek(fd, inode_ptrs[i], SEEK_SET);
+		if (read(fd, &tmp_buffer, MFS_BLOCK_SIZE) < 0 ) { free(curr_inode); return -1; }
+		file_size += strlen(tmp_buffer);
 	}
-	printf("file size: %d\n", curr_inode->size);
+	curr_inode->size = file_size;
+	// printf("new file size:%d\n", curr_inode->size);
+
 	assert(curr_inode->size < MFS_BLOCK_SIZE);
 	assert(curr_inode->size >= 0);
 	// printf("new size: %d\n", curr_inode->size);
-	printf("EOL:::::::::::::::::::::::::::%d\n", eol_ptr);
+	// printf("EOL:::::::::::::::::::::::::::%d\n", eol_ptr);
+
 	// Set the pointer past the current 64 byte imap piece it points to:
 	// (in Brandon's implementation the inode is last)
 	// 1-append the buffer to a new data block (should we be writing MFS_BLOCK_SIZE?)
@@ -535,8 +536,9 @@ int srv_Write(int inum, char *buffer, int block){
 	// lseek(fd, eol_ptr + MFS_BLOCK_SIZE, SEEK_SET);
 	// Record the new position of our data block
 	inode_ptrs[block] = eol_ptr;
-	printf("WRITING FILE AT:::::::::::::::::::::::::::::::::%d\n", inode_ptrs[block]);
-	printf("WRITING FILE AT:::::::::::::::::::::::::::::::::%d\n", eol_ptr);
+	// printf("WRITING FILE AT:::::::::::::::::::::::::::::::::%d\n", inode_ptrs[block]);
+	// printf("WRITING FILE AT:::::::::::::::::::::::::::::::::%d\n", eol_ptr);
+
 	// Set the eol_ptr just past the data block we just wrote (to the inode)
 	eol_ptr += MFS_BLOCK_SIZE; // <--this is now our inode location...
 
@@ -561,6 +563,8 @@ int srv_Write(int inum, char *buffer, int block){
 	// int temp;
 	// read(fd, &temp, 4);
 	// printf("TEMP XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX: %d\n", temp);
+	// int tmp_val = (imap_index * 4);
+	// printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> imap index: %d\n", tmp_val);
 
 	// 5-update our end of log ptr to point to the new imap
 	lseek(fd, 0, SEEK_SET);
@@ -784,10 +788,13 @@ int main(int argc, char *argv[]){
 
 	srv_Init();
 
+	// dump_log();
+
 	char buffer[MFS_BLOCK_SIZE];
 	sprintf(buffer, "#include <stdio.h>\nxxxxxxxxxx\n");
-	srv_Write(3, buffer, 0);
+	int rs = srv_Write(3, buffer, 0);
 
+	assert(rs >= 0);
 	dump_log();
 
 	// srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
