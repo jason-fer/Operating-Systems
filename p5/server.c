@@ -4,9 +4,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-/* char* filename = "example.img"; */
+char* filename = "example.img";
 // char* filename = "bare.img";
-char* filename;
 int* port;
 int fd = 0;
 int inumMax = 0;
@@ -166,7 +165,6 @@ int dump_log(){
  * initialize it to include an empty root directory.
  */
 void getargs(int *port, int argc, char *argv[]){
-  
 	if (argc != 3){
 		fprintf(stderr, "Usage: %s [portnum] [file-system-image]\n", argv[0]);
 		exit(1);
@@ -468,17 +466,24 @@ int srv_Write(int inum, char *buffer, int block){
 	// printf("*****************************buffer: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n%s\n", buffer);
 	printf("SERVER:: you called MFS_Write\n");
 	// Check for valid block: 0 to 13 or invalid inum
-	if(block < 0 || block > 13 || inum < 0 || inum >= MFS_BLOCK_SIZE) return -1;
+	if(block < 0 || block > 13 || inum < 0 || inum >= MFS_BLOCK_SIZE) {
+      return -1;
+    }
 
 	// read the checkpoint region
 	int eol_ptr = 0; // the end of LFS pointer; should always point to an imap
 	lseek(fd, 0, SEEK_SET);
-	if(read(fd, &eol_ptr, sizeof(int)) < 0){ return -1; }
+	if (read(fd, &eol_ptr, sizeof(int)) < 0) { 
+      return -1; 
+    }
 	// printf("!!!!!!!!!!!!!!!!!!!!!! orig EOL: %d\n", eol_ptr);
 
 	// Read in our 256 imap pointers... each with 16 inode refs; 4096 max inums
 	int ckpr_ptrs[256];
-	if(read(fd, &ckpr_ptrs, sizeof(int) * 256) < 0){ return -1; }
+	if (read(fd, &ckpr_ptrs, sizeof(int) * 256) < 0) { 
+      return -1; 
+    }
+
 	int imap_index = inum / 16;
 	// printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> imap index: %d\n", imap_index);
 	int imap_loc = ckpr_ptrs[imap_index];
@@ -488,45 +493,72 @@ int srv_Write(int inum, char *buffer, int block){
 	// Each imapIdx is of 4 bytes; multiply by 4
 	int imap_ptrs[16];
 	lseek(fd, imap_loc, SEEK_SET);
-	if(read(fd, &imap_ptrs, sizeof(int) * 16) < 0){ return -1; }
+	if (read(fd, &imap_ptrs, sizeof(int) * 16) < 0) { 
+      return -1; 
+    }
 
 	// Now read from the imap piece to find the inode_loc
 	int inode_loc = imap_ptrs[inode_index];
 	// Confirm the inode_loc is valid
-	if (inode_loc <= 0 || inode_loc > eol_ptr) { return -1; }
+	if (inode_loc <= 0 || inode_loc > eol_ptr) { 
+      return -1; 
+    }
 
 	// Read inode to determine size / type
 	Inode_t* curr_inode = malloc(sizeof(Inode_t));
 	lseek(fd, inode_loc, SEEK_SET);
-	if (read(fd, curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
-	if (curr_inode->type == MFS_DIRECTORY) { free(curr_inode); return -1; }
-	// printf("file sizexxxxxxxxxxx: %d\n", curr_inode->size);
+
+	if (read(fd, curr_inode, sizeof(Inode_t)) < 0) {
+      free(curr_inode); 
+      return -1; 
+    }
+	
+    if (curr_inode->type == MFS_DIRECTORY) { 
+      free(curr_inode); 
+      return -1; 
+    }
+	
+    // printf("file sizexxxxxxxxxxx: %d\n", curr_inode->size);
 	
 	// Determine the new file size
 	int inode_ptrs[14];
 	lseek(fd, (inode_loc + sizeof(Inode_t)), SEEK_SET);
-	if (read(fd, &inode_ptrs, sizeof(int) * 14) < 0) { free(curr_inode); return -1; }
+	
+    if (read(fd, &inode_ptrs, sizeof(int) * 14) < 0) { 
+      free(curr_inode); 
+      return -1; 
+    }
 
 	// printf("previous file size:%d\n", curr_inode->size);
 
 	// Determine the file size
-	int file_size = 0;
+
 	int data_size = strlen(buffer);
 	// Add the new buffer to the total file size
-	file_size += data_size;
+	int file_size = data_size;
 	char tmp_buffer[MFS_BLOCK_SIZE];
     int i = 0;
 	for (; i < 14; i++){
 		// This is the block we are replacing; ignore it.
-		if (i == block || inode_ptrs[i] <= 0) continue;
+		if (i == block || inode_ptrs[i] <= 0) 
+          continue;
+
 		lseek(fd, inode_ptrs[i], SEEK_SET);
-		if (read(fd, &tmp_buffer, MFS_BLOCK_SIZE) < 0 ) { free(curr_inode); return -1; }
+
+		if (read(fd, &tmp_buffer, MFS_BLOCK_SIZE) < 0 ) { 
+          free(curr_inode); 
+          return -1; 
+        }
+
 		file_size += strlen(tmp_buffer);
 	}
+
 	curr_inode->size = file_size;
 	// printf("new file size:%d\n", curr_inode->size);
 
 	assert(curr_inode->size < MFS_BLOCK_SIZE);
+    // Shouldn't this be 14*MFS_BLOCK_SIZE????
+
 	assert(curr_inode->size >= 0);
 	// printf("new size: %d\n", curr_inode->size);
 	// printf("EOL:::::::::::::::::::::::::::%d\n", eol_ptr);
@@ -535,7 +567,12 @@ int srv_Write(int inum, char *buffer, int block){
 	// (in Brandon's implementation the inode is last)
 	// 1-append the buffer to a new data block (should we be writing MFS_BLOCK_SIZE?)
 	lseek(fd, eol_ptr, SEEK_SET); // <--data goes to end of log...
-	if(write(fd, buffer, MFS_BLOCK_SIZE) < 0){ free(curr_inode); return -1; }
+
+	if(write(fd, buffer, MFS_BLOCK_SIZE) < 0) { 
+      free(curr_inode); 
+      return -1; 
+    }
+
 	// lseek(fd, eol_ptr + MFS_BLOCK_SIZE, SEEK_SET);
 	// Record the new position of our data block
 	inode_ptrs[block] = eol_ptr;
@@ -546,21 +583,37 @@ int srv_Write(int inum, char *buffer, int block){
 	eol_ptr += MFS_BLOCK_SIZE; // <--this is now our inode location...
 
 	// 2-append the updated inode which points to the new data block
-	if(write(fd, &curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
-	if(write(fd, &inode_ptrs, (sizeof(int) * 14)) < 0) { free(curr_inode); return -1; }
+	if (write(fd, &curr_inode, sizeof(Inode_t)) < 0) { 
+      free(curr_inode); 
+      return -1; 
+    }
+	
+    if(write(fd, &inode_ptrs, (sizeof(int) * 14)) < 0) { 
+      free(curr_inode); 
+      return -1; 
+    }
+
 	// Point the imap to our new inode
 	imap_ptrs[inode_index] = eol_ptr;
 	eol_ptr += (sizeof(Inode_t) + (sizeof(int) * 14)); // Size of inode + ptrs
 
 	// 3-append the imap which now points to the new inode
 	imap_loc = eol_ptr; // <--need to point checkpoint region to imap piece
-	if(write(fd, &imap_ptrs, sizeof(int) * 16) < 0){ return -1; }
-	// Update our imap location
+	if(write(fd, &imap_ptrs, sizeof(int) * 16) < 0) { 
+      free(curr_inode); 
+      return -1; 
+    }
+	
+    // Update our imap location
 	eol_ptr += (sizeof(int) * 16); // Size of imap
 
 	// 4-updated the checkpoint region which now points to the new imap
 	lseek(fd, (imap_index * 4) + 4, SEEK_SET);
-	if(write(fd, &imap_loc, sizeof(int)) < 0){ return -1; }
+	if(write(fd, &imap_loc, sizeof(int)) < 0) { 
+      free(curr_inode); 
+      return -1; 
+    }
+
 	// printf("imap_loc XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX: %d\n", imap_loc);
 	// lseek(fd, (imap_index * 4) + 4, SEEK_SET);
 	// int temp;
@@ -571,7 +624,10 @@ int srv_Write(int inum, char *buffer, int block){
 
 	// 5-update our end of log ptr to point to the new imap
 	lseek(fd, 0, SEEK_SET);
-	if(write(fd, &eol_ptr, sizeof(int)) < 0){ return -1; }
+	if(write(fd, &eol_ptr, sizeof(int)) < 0) { 
+      free(curr_inode);
+      return -1; 
+    }
 
 	fsync(fd);
 	free(curr_inode);
@@ -683,16 +739,22 @@ int srv_Unlink(int pinum, char *name){
 	printf("SERVER:: you called MFS_Unlink\n");
 	int inum = pinum;
 	// Check for invalid inum
-	if(inum < 0 || inum >= MFS_BLOCK_SIZE) return -1;
+	if(inum < 0 || inum >= MFS_BLOCK_SIZE) 
+      return -1;
 
 	// read the checkpoint region
 	int eol_ptr = 0; // the end of LFS pointer; should always point to an imap
 	lseek(fd, 0, SEEK_SET);
-	if(read(fd, &eol_ptr, sizeof(int)) < 0){ return -1; }
+	if(read(fd, &eol_ptr, sizeof(int)) < 0) { 
+      return -1; 
+    }
 
 	// Read in our 256 imap pointers... each with 16 inode refs; 4096 max inums
 	int ckpr_ptrs[256];
-	if(read(fd, &ckpr_ptrs, sizeof(int) * 256) < 0){ return -1; }
+	if(read(fd, &ckpr_ptrs, sizeof(int) * 256) < 0) { 
+      return -1; 
+    }
+
 	int imap_index = inum / 16;
 	int imap_loc = ckpr_ptrs[imap_index];
 
@@ -701,43 +763,66 @@ int srv_Unlink(int pinum, char *name){
 	// Each imapIdx is of 4 bytes; multiply by 4
 	int imap_ptrs[16];
 	lseek(fd, imap_loc, SEEK_SET);
-	if(read(fd, &imap_ptrs, sizeof(int) * 16) < 0){ return -1; }
+	if(read(fd, &imap_ptrs, sizeof(int) * 16) < 0) { 
+      return -1; 
+    }
 
 	// Now read from the imap piece to find the inode_loc
 	int inode_loc = imap_ptrs[inode_index];
 	// Confirm the inode_loc is valid
-	if (inode_loc <= 0 || inode_loc > eol_ptr) { return -1; }
+	if (inode_loc <= 0 || inode_loc > eol_ptr) { 
+      return -1; 
+    }
 
 	// Read inode to determine size / type
 	Inode_t* curr_inode = malloc(sizeof(Inode_t));
 	lseek(fd, inode_loc, SEEK_SET);
-	if (read(fd, curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
-	// We can only unlink a name from a directory
-	if (curr_inode->type != MFS_DIRECTORY) { free(curr_inode); return -1; }
+	if (read(fd, curr_inode, sizeof(Inode_t)) < 0) { 
+      free(curr_inode); 
+      return -1; 
+    }
+	
+    // We can only unlink a name from a directory
+	if (curr_inode->type != MFS_DIRECTORY) { 
+      free(curr_inode); 
+      return -1; 
+    }
 	
 	// Find the directory or file to unlink...
 	int inode_ptrs[14];
 	lseek(fd, (inode_loc + sizeof(Inode_t)), SEEK_SET);
-	if (read(fd, &inode_ptrs, sizeof(int) * 14) < 0) { free(curr_inode); return -1; }
+	if (read(fd, &inode_ptrs, sizeof(int) * 14) < 0) { 
+      free(curr_inode); 
+      return -1; 
+    }
 
 	// Find the directory or file to remove
 	MFS_DirEnt_t dir_entry;
-	int i = 0;
 	int is_found = 0;
-	int dir_entry_block = 0;
+	int dir_entry_block = -1;
+
+	int i = 0;
 	for (; i < 14; ++i) {
-		if(inode_ptrs[i] == 0) continue; // inode not in use!
-		printf("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx inode:%d, loc:%d\n", i, inode_ptrs[i]);
+		if(inode_ptrs[i] == 0) 
+          continue; // inode not in use!
+
+		// printf("inode:%d, loc:%d\n", i, inode_ptrs[i]);
 		lseek(fd, inode_ptrs[i], SEEK_SET);
  
 		int count = 0;
 		while(count != 64) {
 			++count;
 			// Reading a directory entry moves the file pointer forward to the next
-			if (read(fd, &dir_entry, sizeof(MFS_DirEnt_t)) < 0) { continue; }
+			if (read(fd, &dir_entry, sizeof(MFS_DirEnt_t)) < 0) { 
+              continue; 
+            }
+
 			// Ignore invalid inode numbers
-			if (dir_entry.inum == -1) { continue; }
-			// printf("inum:%d, dir:%s\n", dir_entry.inum, dir_entry.name);
+			if (dir_entry.inum == -1) { 
+              continue; 
+            }
+			
+            // printf("inum:%d, dir:%s\n", dir_entry.inum, dir_entry.name);
 			if (strcmp(dir_entry.name, name) == 0) { 
 				is_found = 1;  
 				dir_entry_block = i;
@@ -745,67 +830,109 @@ int srv_Unlink(int pinum, char *name){
 			} 
 		}
 	}
+
 	// If we couldn't find the name then our delete was a 'success'...
-	if(! is_found) { free(curr_inode); return 0; }
+	if(!is_found) { 
+      free(curr_inode); 
+      return 0; 
+    }
 
 	int unlink_loc = get_inode_location(dir_entry.inum);
-	if(unlink_loc <= 0){ free(curr_inode); return -1; } // Fail.....
+
+	if(unlink_loc <= 0) { // Fail.....
+      free(curr_inode); 
+      return -1; 
+    } 
+
 	// if(is_found) printf("FOUND!!!!!!! dir_entry.inum: %d \n", dir_entry.inum);
 
 	// Determine whether this is a file or directory we are unlinking
 	Inode_t unlink_inode;
 	MFS_DirEnt_t unlink_dir;
-	lseek(fd, inode_loc, SEEK_SET);
-	if (read(fd, &unlink_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
+
+	lseek(fd, unlink_loc, SEEK_SET); // This is one I have found I guess
+
+	if (read(fd, &unlink_inode, sizeof(Inode_t)) < 0) { 
+      free(curr_inode); 
+      return -1; 
+    }
 
 	// This is a directory; if it's not empty we can't delete it
 	if (unlink_inode.type == MFS_DIRECTORY) {  
+
 		int unlink_ptrs[14];
+
 		lseek(fd, (unlink_loc + sizeof(Inode_t)), SEEK_SET);
-		if (read(fd, &unlink_ptrs, sizeof(int) * 14) < 0) { free(curr_inode); return -1; }
-		// Determine if the directory is empty... 
+		if (read(fd, &unlink_ptrs, sizeof(int) * 14) < 0) { 
+          free(curr_inode); 
+          return -1; 
+        }
+		
+        // Determine if the directory is empty... 
 		for (i = 0; i < 14; ++i) {
-			if(unlink_ptrs[i] == 0) continue; // inode not in use!
-			// printf("directory: unlink_ptrs[%d]:%d\n", i, unlink_ptrs[i]);
-			lseek(fd, unlink_ptrs[i], SEEK_SET);
+          if(unlink_ptrs[i] == 0) {
+              continue; // inode not in use!
+          }
+
+          // printf("directory: unlink_ptrs[%d]:%d\n", i, unlink_ptrs[i]);
+          lseek(fd, unlink_ptrs[i], SEEK_SET);
 	 
-			int count = 0;
-			while(count != 64) {
-				++count;
-				// Reading a directory entry moves the file pointer forward to the next
-				if (read(fd, &unlink_dir, sizeof(MFS_DirEnt_t)) < 0) { continue; }
-				// Ignore invalid inode numbers
-				if (unlink_dir.inum == -1) { continue; }
-				// Always ignore the first two directory entries; "." and ".."
-				if(count < 3){ continue; }
-				// If we reach this point, we know this directory is not empty... 
-				// we can't delete a non-empty directory...
-				printf("can't delete a non-empty directory.....\n");
-				free(curr_inode); return -1;
-				// printf("directory: count:%d ulink: inum:%d, dir:%s\n", count, unlink_dir.inum, unlink_dir.name);
-			}
+          int count = 0;
+          while(count != 64) {
+            ++count;
+				
+            // Reading a directory entry moves the file pointer forward to the next
+            if (read(fd, &unlink_dir, sizeof(MFS_DirEnt_t)) < 0) { 
+              continue; 
+            }
+			
+            // Ignore invalid inode numbers
+            if (unlink_dir.inum == -1) { 
+              continue; 
+            }
+				
+            // Always ignore the first two directory entries; "." and ".."
+            if(count < 3) { 
+              continue; 
+            }
+				
+            // If we reach this point, we know this directory is not empty... 
+            // we can't delete a non-empty directory...
+            printf("can't delete a non-empty directory.....\n");
+            free(curr_inode); 
+            return -1;
+            // printf("directory: count:%d ulink: inum:%d, dir:%s\n", count, unlink_dir.inum, unlink_dir.name);
+          }
 		}
 	}
 
 	// Wipe out the directory entry data that we no longer need
 	MFS_DirEnt_t dir_entries[64];
+    
+    assert(dir_entry_block >= 0);
+
 	lseek(fd, inode_ptrs[dir_entry_block], SEEK_SET);
 	// Read in the current directory data block
-	if (read(fd, &dir_entries, MFS_BLOCK_SIZE) < 0) { free(curr_inode); return -1; }
+	if (read(fd, &dir_entries, MFS_BLOCK_SIZE) < 0) { 
+      free(curr_inode); 
+      return -1; 
+    }
 
 	// Modify the data block...
 	int unlink_success = 0;
 
 	for (i = 0; i < 64; ++i) {
-		if(dir_entries[i].inum == -1) continue;	
-		// printf("dir_entries[%d]: dir_entry.inum:%d, dir_entry.name:%s \n", i, dir_entries[i].inum, dir_entries[i].name); 
-		if (strcmp(dir_entries[i].name, name) == 0) {
+		if(dir_entries[i].inum == -1) 
+          continue;	
+        
+        // printf("dir_entries[%d]: dir_entry.inum:%d, dir_entry.name:%s \n", i, 
+        // dir_entries[i].inum, dir_entries[i].name);
+		if (strcmp(dir_entry.name, name) == 0) {
 			// printf("entry to wipe!! inum:%d, dir:%s\n", dir_entry.inum, dir_entry.name);
-			// wipe out the parent directory entry by setting the inum to -1
 			dir_entries[i].inum = -1;
 			sprintf(dir_entries[i].name, "");
 			unlink_success = 1;
-			// break; 
+			break; 
 		}
 	}
 	assert(unlink_success == 1);
@@ -815,32 +942,32 @@ int srv_Unlink(int pinum, char *name){
 	// Naive implementation: assume both inums are in the same imap piece
 	// @todo: add edge-case logic to handle scenario when inums are not in the same imap piece!
 	assert(imap_index == (dir_entry.inum / 16));
+
 	int unlink_inode_index = dir_entry.inum % 16;
+	// printf("unlink_inode_index:%d, inode_index:%d\n", unlink_inode_index, inode_index);
+
+	// dir_entry.inum <-- set this inum location to zero in the parent imap
+	// wipe out the parent directory entry by setting the inum to -1
 
 	// 1-append the new data block
 	lseek(fd, eol_ptr, SEEK_SET); // <--data goes to end of log...
 	if(write(fd, dir_entries, MFS_BLOCK_SIZE) < 0){ free(curr_inode); return -1; }
-	// Point one of the 14x inode data-block to our new data block
+	// Record the new position of our data block
 	inode_ptrs[dir_entry_block] = eol_ptr;
-
-	printf("xxxxxxxxxxxxxxxxxxxxxxxx data_block: %d\n", eol_ptr);
-
-	// 2-append the updated inode & ptrs which points to the new data block
-	if(write(fd, &curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
-	if(write(fd, &inode_ptrs, (sizeof(int) * 14)) < 0) { free(curr_inode); return -1; }
 	// Set the eol_ptr just past the data block we just wrote (to the inode)
 	eol_ptr += MFS_BLOCK_SIZE; // <--this is now our inode location...
+
+	// 2-append the updated inode which points to the new data block
+	if(write(fd, &curr_inode, sizeof(Inode_t)) < 0) { free(curr_inode); return -1; }
+	if(write(fd, &inode_ptrs, (sizeof(int) * 14)) < 0) { free(curr_inode); return -1; }
 	// Point the imap to our new inode
 	imap_ptrs[inode_index] = eol_ptr;
-	printf("xxxxxxxxxxxxxxxxxxxxxxxx imap_ptrs[inode_index]: %d\n", imap_ptrs[inode_index]);
 	// Zero out the location to our inode which is no longer valid
 	imap_ptrs[unlink_inode_index] = 0;
-
-	// 3-append the imap which now points to the new inode
 	eol_ptr += (sizeof(Inode_t) + (sizeof(int) * 14)); // Size of inode + ptrs
-	imap_loc = eol_ptr; // <--point the checkpoint region to imap piece
+	// 3-append the imap which now points to the new inode
+	imap_loc = eol_ptr; // <--need to point checkpoint region to imap piece
 	if(write(fd, &imap_ptrs, sizeof(int) * 16) < 0){ return -1; }
-
 	// Update our imap location
 	eol_ptr += (sizeof(int) * 16); // Size of imap
 
@@ -848,12 +975,9 @@ int srv_Unlink(int pinum, char *name){
 	lseek(fd, (imap_index * 4) + 4, SEEK_SET);
 	if(write(fd, &imap_loc, sizeof(int)) < 0){ return -1; }
 
-	printf("xxxxxxxxxxxxxxxxxxxxxxxx imap_loc: %d\n", imap_loc);
-
 	// 5-update our end of log ptr to point to the new imap
 	lseek(fd, 0, SEEK_SET);
 	if(write(fd, &eol_ptr, sizeof(int)) < 0){ return -1; }
-	printf("xxxxxxxxxxxxxxxxxxxxxxxx eol_ptr: %d\n", eol_ptr);
 
 	fsync(fd);
 	free(curr_inode);
@@ -874,7 +998,7 @@ void fs_Shutdown(){
  * shutdown by calling exit(0). This interface will mostly be used for testing 
  * purposes.
  */
-int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
+/*int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 		// Notify client we are shutting down; this is the only method completely 
 		// tied to a client call.
 		rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
@@ -882,9 +1006,9 @@ int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 		fs_Shutdown();
 		// This will never happen....
 		return 0;
-}
+}*/
 
-int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
+/*int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 
 	switch(m.method){
 		case M_Init:
@@ -928,16 +1052,16 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 	printf("reply: %s\n", m.reply);
 	return 0;
 	return UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
-}
+}*/
 
-void start_server(int argc, char *argv[]){
+/*void start_server(int argc, char *argv[]){
 	 int sd, port; 
 	
 	 getargs(&port, argc, argv); 
 	 sd = UDP_Open(port); 
 	 assert(sd > -1); 
 
-     printf("SERVER:: waiting in loop\n");
+	printf("SERVER:: waiting in loop\n");
 
 	 while (1) { 
 		struct sockaddr_in s; 
@@ -948,7 +1072,7 @@ void start_server(int argc, char *argv[]){
 			printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
 		}
 	 } 
-}
+}*/
 
 /**
  * E.g. usage: ./server 10000 tempfile
@@ -956,14 +1080,14 @@ void start_server(int argc, char *argv[]){
 int main(int argc, char *argv[]){
 
 	// Disable this to test methods without running the server...
-	start_server(argc, argv);
+	// start_server(argc, argv);
 
 	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
-	// Note: Unused entries in the inode map and unused direct pointers in the inodes should
+	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
 	// int inum;
 
-	/* srv_Init(); */
+	srv_Init();
 
 	// dump_log();
 
@@ -971,10 +1095,10 @@ int main(int argc, char *argv[]){
 	// sprintf(buffer, "#include <stdio.h>\nxxxxxxxxxx\n");
 	// int rs = srv_Write(3, buffer, 0);
 
+	int rs = srv_Unlink(0, "dir");
 	// int rs = srv_Unlink(6, "turtles"); // should fail
-	/* int rs = srv_Unlink(0, "dir"); */
-	/* // assert(rs >= 0); */
-	/* dump_log(); */
+	assert(rs >= 0);
+	dump_log();
 
 	// srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
 
