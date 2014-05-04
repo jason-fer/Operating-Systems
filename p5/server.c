@@ -829,6 +829,10 @@ int srv_Unlink(int pinum, char *name){
 				break; 
 			} 
 		}
+
+        if (is_found) {
+          break;
+        }
 	}
 
 	// If we couldn't find the name then our delete was a 'success'...
@@ -927,10 +931,10 @@ int srv_Unlink(int pinum, char *name){
         
         // printf("dir_entries[%d]: dir_entry.inum:%d, dir_entry.name:%s \n", i, 
         // dir_entries[i].inum, dir_entries[i].name);
-		if (strcmp(dir_entry.name, name) == 0) {
+		if (strcmp(dir_entries[i].name, name) == 0) {
 			// printf("entry to wipe!! inum:%d, dir:%s\n", dir_entry.inum, dir_entry.name);
-			dir_entries[i].inum = -1;
-			sprintf(dir_entries[i].name, "");
+			dir_entries[i].inum    = -1;
+			dir_entries[i].name[0] = '\0';
 			unlink_success = 1;
 			break; 
 		}
