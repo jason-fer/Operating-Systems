@@ -796,17 +796,27 @@ int srv_Unlink(int pinum, char *name){
 
 	for (i = 0; i < 64; ++i) {
 		if(dir_entries[i].inum == -1) continue;	
-			// printf("dir_entries[%d]: dir_entry.inum:%d, dir_entry.name:%s \n", i, 
-			// dir_entries[i].inum, dir_entries[i].name);
-		if (strcmp(dir_entry.name, name) == 0) {
+		// printf("dir_entries[%d]: dir_entry.inum:%d, dir_entry.name:%s \n", i, dir_entries[i].inum, dir_entries[i].name); 
+		if (strcmp(dir_entries[i].name, name) == 0) {
 			// printf("entry to wipe!! inum:%d, dir:%s\n", dir_entry.inum, dir_entry.name);
 			dir_entries[i].inum = -1;
 			sprintf(dir_entries[i].name, "");
 			unlink_success = 1;
-			break; 
+			// break; 
 		}
 	}
 	assert(unlink_success == 1);
+
+	// printf("\nDid it work????????\n\n");
+	// for (i = 0; i < 64; ++i) {
+	// 	if(dir_entries[i].inum == -1) continue;	
+	// 	printf("dir_entries[%d]: dir_entry.inum:%d, dir_entry.name:%s \n", i, dir_entries[i].inum, dir_entries[i].name); 
+	// 	if (strcmp(dir_entries[i].name, name) == 0) {
+	// 		printf("failed to wipe!! %s:%d \n", dir_entry.name, dir_entry.inum);
+	// 	}
+	// }
+
+	// exit(0);
 
 	// Simple if both entries are in the same imap; a little more tricky if the
 	// parent is in one imap & the directory was in another
@@ -966,9 +976,9 @@ int main(int argc, char *argv[]){
 	// sprintf(buffer, "#include <stdio.h>\nxxxxxxxxxx\n");
 	// int rs = srv_Write(3, buffer, 0);
 
-	int rs = srv_Unlink(0, "dir");
 	// int rs = srv_Unlink(6, "turtles"); // should fail
-	assert(rs >= 0);
+	int rs = srv_Unlink(0, "dir");
+	// assert(rs >= 0);
 	dump_log();
 
 	// srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
