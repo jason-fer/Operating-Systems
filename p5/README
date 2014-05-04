@@ -7,13 +7,3 @@
 | Section: LEC 001
 | Professor: Daniel Scott Myers
 +-------------------------------------------------------------------------------
-
-
-+-------------------------------------------------------------------------------
-| Helpful Tools:
-+-------------------------------------------------------------------------------
-
-mfsput: takes a filename as input, and create a file in your MFS file system 
-based on that file
-
-mfscat: dumps the contents of a file in MFS to the screen

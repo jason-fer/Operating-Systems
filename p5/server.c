@@ -1023,81 +1023,80 @@ void fs_Shutdown(){
  * shutdown by calling exit(0). This interface will mostly be used for testing 
  * purposes.
  */
-/*int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
-		// Notify client we are shutting down; this is the only method completely 
-		// tied to a client call.
-		rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
-		// @todo: we probably need to call fsync (or an equivalent) before exit!
-		fs_Shutdown();
-		// This will never happen....
-		return 0;
-}*/
+int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
+	// Notify client we are shutting down; this is the only method completely 
+	// tied to a client call.
+	rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
+	// @todo: we probably need to call fsync (or an equivalent) before exit!
+	fs_Shutdown();
+	// This will never happen....
+	return 0;
+}
 
-/*int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
+int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
 
 	switch(m.method){
 		case M_Init:
-		 sprintf(m.reply, "MFS_Init");
-		 srv_Init();
-		 break;
+			sprintf(m.reply, "MFS_Init");
+			srv_Init();
+			break;
 		case M_Lookup:
-		 sprintf(m.reply, "MFS_Lookup");
-		 srv_Lookup(m.pinum, m.name);
-		 break;
+			sprintf(m.reply, "MFS_Lookup");
+			srv_Lookup(m.pinum, m.name);
+			break;
 		case M_Stat:
-		 sprintf(m.reply, "MFS_Stat");
-		 srv_Stat(m.inum, &m.mfs_stat);
-		 break;
+			sprintf(m.reply, "MFS_Stat");
+			srv_Stat(m.inum, &m.mfs_stat);
+			break;
 		case M_Write:
-		 sprintf(m.reply, "MFS_Write");
-		 srv_Write(m.inum, m.buffer, m.block);
-		 break;
+			sprintf(m.reply, "MFS_Write");
+			srv_Write(m.inum, m.buffer, m.block);
+			break;
 		case M_Read:
-		 sprintf(m.reply, "MFS_Read");
-		 srv_Read(m.inum, m.buffer, m.block);
-		 break;
+			sprintf(m.reply, "MFS_Read");
+			srv_Read(m.inum, m.buffer, m.block);
+			break;
 		case M_Creat:
-		 sprintf(m.reply, "MFS_Creat");
-		 srv_Creat(m.pinum, m.type, m.name);
-		 break;
+			sprintf(m.reply, "MFS_Creat");
+			srv_Creat(m.pinum, m.type, m.name);
+			break;
 		case M_Unlink:
-		 sprintf(m.reply, "MFS_Unlink");
-		 srv_Unlink(m.pinum, m.name);
-		 break;
+			sprintf(m.reply, "MFS_Unlink");
+			srv_Unlink(m.pinum, m.name);
+			break;
 		case M_Shutdown:
-		 sprintf(m.reply, "MFS_Shutdown");
-		 srv_Shutdown(rc, sd, s, m);
-		 break;
+			sprintf(m.reply, "MFS_Shutdown");
+			srv_Shutdown(rc, sd, s, m);
+			break;
 		default:
-		 printf("SERVER:: method does not exist\n");
-		 sprintf(m.reply, "Failed");
-		 break;
+			printf("SERVER:: method does not exist\n");
+			sprintf(m.reply, "Failed");
+			break;
 	}
 
-	printf("reply: %s\n", m.reply);
-	return 0;
+	// printf("reply: %s\n", m.reply);
 	return UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
-}*/
+}
 
-/*void start_server(int argc, char *argv[]){
-	 int sd, port; 
-	
-	 getargs(&port, argc, argv); 
-	 sd = UDP_Open(port); 
-	 assert(sd > -1); 
+void start_server(int argc, char *argv[]){
+	int sd, port; 
+
+	getargs(&port, argc, argv); 
+	sd = UDP_Open(port); 
+	assert(sd > -1); 
 
 	printf("SERVER:: waiting in loop\n");
 
-	 while (1) { 
-		struct sockaddr_in s; 
-		struct msg_r m; 
-		int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
+	while (1) { 
+	struct sockaddr_in s; 
+	struct msg_r m; 
+	int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
 		if (rc > 0) {
 			rc = call_rpc_func(rc, sd, s, m);
 			printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
 		}
-	 } 
-}*/
+	} 
+}
 
 /**
  * E.g. usage: ./server 10000 tempfile
@@ -1105,14 +1104,14 @@ void fs_Shutdown(){
 int main(int argc, char *argv[]){
 
 	// Disable this to test methods without running the server...
-	// start_server(argc, argv);
+	start_server(argc, argv);
 
 	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
 	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
 	// int inum;
 
-	srv_Init();
+	// srv_Init();
 
 	// dump_log();
 
@@ -1120,10 +1119,10 @@ int main(int argc, char *argv[]){
 	// sprintf(buffer, "#include <stdio.h>\nxxxxxxxxxx\n");
 	// int rs = srv_Write(3, buffer, 0);
 
-	int rs = srv_Unlink(0, "dir");
+	// int rs = srv_Unlink(0, "dir");
 	// int rs = srv_Unlink(6, "turtles"); // should fail
-	assert(rs >= 0);
-	dump_log();
+	// assert(rs >= 0);
+	// dump_log();
 
 	// srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
 
