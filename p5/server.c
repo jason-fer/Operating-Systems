@@ -513,7 +513,8 @@ int srv_Write(int inum, char *buffer, int block){
 	// Add the new buffer to the total file size
 	file_size += data_size;
 	char tmp_buffer[MFS_BLOCK_SIZE];
-	for (int i = 0; i < 14; i++){
+    int i = 0;
+	for (; i < 14; i++){
 		// This is the block we are replacing; ignore it.
 		if (i == block || inode_ptrs[i] <= 0) continue;
 		lseek(fd, inode_ptrs[i], SEEK_SET);
