@@ -736,15 +736,23 @@ int srv_Creat(int pinum, int type, char *name){
 	// 1-create entry in an existing area
 	// 2-create entry to a new area
 	int rs = srv_Lookup(pinum, name);
-	if (strcmp((char*) &rs, name) == 0){
-		// The directory already exists; we are done
-		return 0;
-	}
+    if (rs == 0) {
+        return 0;
+    }
 
 	int location = get_inode_location(pinum);
 	if (location < 0) {
 		return -1;
 	}
+
+    if (type == MFS_REGULAR_FILE) {
+        return mkFile(pinum, name);
+    } else if (type == MFS_DIRECTORY) {
+        return mkDir(pinum, name);
+    } 
+    
+    return -1;
+
 
 	// if every imap is full, point the appropriate CR region entry to a new imap
 	// if we created a new imap, initialze all the values to 0
@@ -817,6 +825,15 @@ int srv_Creat(int pinum, int type, char *name){
 	return 0;
 }
 
+int
+mkFile(int pinum, char* name) {
+    printf("Here to make a filein parent inode %d and with name %s\n", pinum, name);
+}
+
+int
+mkDir(int pinum, char* name) {
+    printf("Here to make a directory in parent inode %d and with name %s\n", pinum, name);
+}
 /**
  * Removes the file or directory name from the directory specified by pinum. 
  * 0 on success, -1 on failure. 
