@@ -186,12 +186,16 @@ int get_inode_location(int inum) {
 		return -1;
 	}
 
+    printf ("Got inum as %d\n", inum);
+    printf ("Got filename as %s\n", filename);
 	// Set pointer at the front of the file
 	lseek(fd, 0, SEEK_SET);
 
 	// Read result into the address of the checkPointVal
 	int checkPointVal = 0;
 	int rc = read(fd, &checkPointVal, sizeof(int));
+    printf ("Got rc as %d\n", rc);
+    printf ("Got eol as %d\n", checkPointVal);
 	if (rc < 0) {
 		return -1;
 	}
@@ -208,6 +212,7 @@ int get_inode_location(int inum) {
 		return -1;
 	}
 
+    printf ("Got locationToPiece as %d\n", locationToPiece);
 	// We found our imap piece; now use modulus to find one of 16 inode refs
 	int iNodeMapIdx = inum % 16;
 	// Each imapIdx is of 4 bytes, so multiplying by 4
@@ -314,12 +319,15 @@ initDisk() {
             return -1;
         }
     }
+
+    return 0;
 }
  
 int srv_Init() {
 	printf("SERVER:: you called MFS_Init\n");
 	fd = open(filename, O_RDWR, S_IRWXU);
 	if (fd < 0) {
+        printf ("Open error\n");
         return initDisk();
 	}
 	return 0;
@@ -342,8 +350,7 @@ int srv_Lookup(int pinum, char *name) {
 	if (location < 0) {
 		return -1;
 	}
-	// printf ("rc value %d\n",rc);
-	// printf ("location %d\n", location);
+    // printf ("location %d\n", location);
 
 	// Read in the inode directory map structure
 	lseek(fd, location, SEEK_SET);
@@ -1199,7 +1206,8 @@ int main(int argc, char *argv[]){
 	// srv_Init();
 
 	// dump_log();
-
+  
+    // srv_Lookup(0, ".");
 	// char buffer[MFS_BLOCK_SIZE];
 	// sprintf(buffer, "#include <stdio.h>\nxxxxxxxxxx\n");
 	// int rs = srv_Write(3, buffer, 0);
