@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-char* filename = "test";
+char* filename = NULL;
 // char* filename = "example.img";
 // char* filename = "bare.img";
 int* port;
