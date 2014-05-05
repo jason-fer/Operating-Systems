@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-char* filename = NULL;
+char* filename = "test";
 // char* filename = "example.img";
 // char* filename = "bare.img";
 int* port;
@@ -230,13 +230,97 @@ int get_inode_location(int inum) {
 	return location;
 }
 
-int srv_Init(){
+int
+initDisk() {
+    fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
+    if (fd < 0) {
+        printf("Open error\n");
+        exit(1);
+    }
+
+    lseek(fd, 0, SEEK_SET);
+    int eol = (4 + 256*4 + 4096 + sizeof(Inode_t) + 14*sizeof(int) + 16*sizeof(int));
+    if (write(fd, &eol, sizeof(int)) < 0) {
+        return -1;
+    }
+    
+    int imapPieceIdxArr[256];
+    imapPieceIdxArr[0] = (4 + 256*4 + 4096 + sizeof(Inode_t) + 14*sizeof(int));
+
+    int j = 1;
+    for (; j < 256; ++j) {
+        imapPieceIdxArr[j] = 0;
+    }
+
+    if (write(fd, &imapPieceIdxArr, 256*sizeof(int)) < 0) {
+        return -1;
+    }
+
+
+    lseek(fd, 257*sizeof(int),SEEK_SET);
+
+    MFS_DirEnt_t dirEntries[64];
+    
+    dirEntries[0].name[0] = '.';
+    dirEntries[0].name[1] = '\0';
+    dirEntries[0].inum    = 0;
+
+    dirEntries[1].name[0] = '.';
+    dirEntries[1].name[1] = '.';
+    dirEntries[1].name[2] = '\0';
+    dirEntries[1].inum    = 0;
+
+    int i = 2;
+    for (; i < 64; i++) {
+        dirEntries[i].name[0] = '\0';
+        dirEntries[i].inum    = -1;
+    }
+
+    if (write(fd, &dirEntries, 64*sizeof(MFS_DirEnt_t)) < 0) {
+        return -1;
+    }
+
+    Inode_t curr_inode;
+    curr_inode.size = 4096;
+    curr_inode.type = MFS_DIRECTORY;
+
+    if (write(fd, &curr_inode, sizeof(Inode_t)) < 0) {
+        return -1;
+    }
+    
+    int inode_ptrs[14];
+    
+    inode_ptrs[0] = 257*4;
+    inode_ptrs[1] = 257*4;
+    
+    i = 2;
+    for (; i < 14; ++i) {
+      inode_ptrs[i] = 0;
+    }
+
+    if (write(fd, &inode_ptrs, sizeof(int)*14) < 0) {
+      return -1;
+    }
+
+    int imapPiece = (4 + 256*4 + 4096);
+    if (write(fd, &imapPiece, sizeof(int)) < 0) {
+        return -1;
+    }
+    
+    i = 1;
+    int zero = 0;
+    for (; i < 16; ++i) {
+        if (write(fd, &zero, sizeof(int)) < 0) {
+            return -1;
+        }
+    }
+}
+ 
+int srv_Init() {
 	printf("SERVER:: you called MFS_Init\n");
-	fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
+	fd = open(filename, O_RDWR, S_IRWXU);
 	if (fd < 0) {
-		char error_message[30] = "An error has occurred\n";
-		write(STDERR_FILENO, error_message, strlen(error_message));
-		exit(1);
+        return initDisk();
 	}
 	return 0;
 }
