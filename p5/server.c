@@ -186,16 +186,14 @@ int get_inode_location(int inum) {
 		return -1;
 	}
 
-    printf ("Got inum as %d\n", inum);
-    printf ("Got filename as %s\n", filename);
+    // printf ("Got inum as %d\n", inum);
+    // printf ("Got filename as %s\n", filename);
 	// Set pointer at the front of the file
 	lseek(fd, 0, SEEK_SET);
 
 	// Read result into the address of the checkPointVal
 	int checkPointVal = 0;
 	int rc = read(fd, &checkPointVal, sizeof(int));
-    printf ("Got rc as %d\n", rc);
-    printf ("Got eol as %d\n", checkPointVal);
 	if (rc < 0) {
 		return -1;
 	}
@@ -212,7 +210,6 @@ int get_inode_location(int inum) {
 		return -1;
 	}
 
-    printf ("Got locationToPiece as %d\n", locationToPiece);
 	// We found our imap piece; now use modulus to find one of 16 inode refs
 	int iNodeMapIdx = inum % 16;
 	// Each imapIdx is of 4 bytes, so multiplying by 4
