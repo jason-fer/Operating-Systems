@@ -317,6 +317,7 @@ initDisk() {
         }
     }
 
+	fsync(fd);
     return 0;
 }
  
@@ -324,7 +325,6 @@ int srv_Init() {
 	printf("SERVER:: you called MFS_Init\n");
 	fd = open(filename, O_RDWR, S_IRWXU);
 	if (fd < 0) {
-        printf ("Open error\n");
         return initDisk();
 	}
 	return 0;
