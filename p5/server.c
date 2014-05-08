@@ -4,8 +4,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-char* filename = NULL;
-// char* filename = "example.img";
+// char* filename = NULL;
+char* filename = "example.img";
 // char* filename = "bare.img";
 int* port;
 int fd = 0;
@@ -30,7 +30,7 @@ void dump_file_inode(int fd, int file_loc, int file_size){
 		// printf("block ptr:%d, loc:%d\n", i, inode_blk_ptrs[i]);
 		lseek(fd, inode_blk_ptrs[i], SEEK_SET);
  
-		printf("inode_blk_ptrs[%i]:%d, data block contents: \n%s\n",i, inode_blk_ptrs[i], buffer);
+		// printf("inode_blk_ptrs[%i]:%d, data block[%d] contents: \n%s\n",i, inode_blk_ptrs[i], buffer);
 
 		// XXXXXXXXXXXXXXXXXXXXXX TEMP XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 		// prevents crazy log dump...
@@ -1189,14 +1189,14 @@ void start_server(int argc, char *argv[]){
 int main(int argc, char *argv[]){
 
 	// Disable this to test methods without running the server...
-	start_server(argc, argv);
+	// start_server(argc, argv);
 
 	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
 	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
 	// int inum;
 
-	// srv_Init();
+	srv_Init();
 
 	// dump_log();
 	
@@ -1208,7 +1208,7 @@ int main(int argc, char *argv[]){
 	// int rs = srv_Unlink(0, "dir");
 	// int rs = srv_Unlink(6, "turtles"); // should fail
 	// assert(rs >= 0);
-	// dump_log();
+	dump_log();
 
 	// srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
 
