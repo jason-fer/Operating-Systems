@@ -41,7 +41,8 @@ void test_stat(){
 }
 
 void test_lookup(){
-	response = MFS_Lookup(pinum, name);
+	response = MFS_Lookup(0, ".");
+        printf("Inode value received = %d\n", response);
 	assert(response >= 0);
 	printf("MFS_Lookup passed\n");
 }
@@ -68,9 +69,9 @@ int main(int argc, char *argv[]){
 	// test_write();
 	// test_read();
 	// test_stat();
-	// test_lookup();
+	test_lookup();
 	// test_unlink();
-	test_shutdown();
+	// test_shutdown();
 
 	char message[BUFFER_SIZE];
 	sprintf(message, "hello world");

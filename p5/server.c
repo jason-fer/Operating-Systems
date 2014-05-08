@@ -172,8 +172,8 @@ void getargs(int *port, int argc, char *argv[]){
 	}
 	*port = atoi(argv[1]);
 	filename = strdup(argv[2]);
-	// printf("port: %d\n", *port);
-	// printf("file-image name: %s\n", filename);
+	printf("port: %d\n", *port);
+	printf("file-image name: %s\n", filename);
 }
 
 /**
@@ -1236,7 +1236,7 @@ int main(int argc, char *argv[]){
 
 	// dump_log();
   
-    // srv_Lookup(0, ".");
+        // srv_Lookup(0, ".");
 	// char buffer[MFS_BLOCK_SIZE];
 	// sprintf(buffer, "#include <stdio.h>\nxxxxxxxxxx\n");
 	// int rs = srv_Write(3, buffer, 0);
