@@ -1212,6 +1212,7 @@ int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 
 int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 
+    printf ("SERVER::rpc_func got m as %p\n",m);
 	switch(m->method){
 		case M_Init:
 			sprintf(m->reply, "MFS_Init");
@@ -1219,7 +1220,14 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 			break;
 		case M_Lookup:
 			sprintf(m->reply, "MFS_Lookup");
-            printf ("Looking up with m->pinum %d and m->name %s\n", m->pinum, m->name);
+            printf("SERVER:: says I am in lookup case\n");
+            
+            if (m->name != NULL) {
+              printf ("Looking up with m->pinum %d and m->name %s\n", m->pinum, m->name);
+            } else {
+              printf ("Got NULL\n");
+            }
+
 			m->rc = srv_Lookup(m->pinum, m->name);
             printf ("In server received rc as = %d\n",m->rc);
 			break;
@@ -1267,10 +1275,10 @@ void start_server(int argc, char *argv[]){
 	printf("SERVER:: waiting in loop\n");
 
 	while (1) { 
-	struct sockaddr_in s; 
-	struct msg_r m; 
-	int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
-    printf ("SERVER::m.rc = %d\n", m.rc);
+        struct sockaddr_in s; 
+        struct msg_r m; 
+        int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
+        printf ("SERVER::m.rc = %d\n", m.rc);
 		if (rc > 0) {
 			rc = call_rpc_func(rc, sd, s, &m);
 			printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);

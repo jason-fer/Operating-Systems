@@ -62,7 +62,10 @@ int MFS_Init(char *hostname, int port){
   struct msg_r m;
   m.method = M_Init;
   m.rc     = -1;
-  rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
+  m.name   = NULL;
+  char* castedMsg = (char*)(&m);
+  printf ("SERVER::HERE\n");
+  rc = UDP_Write(sd, &saddr, castedMsg, sizeof(struct msg_r));
   // We expect the reply to contain "MFS_Init"
   return read_reply(rc, sd, &m, "MFS_Init");
 }
@@ -100,9 +103,10 @@ int MFS_Lookup(int pinum, char *name){
   m.method = M_Lookup;
   m.rc     = -1;
   printf("Client:: sending pinum:%d, name:%s \n", pinum, name);
-  rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
+  rc = UDP_Write(sd, &saddr, (char *)&m, sizeof(m));
   // We expect the reply to contain "MFS_Lookup"
   read_reply(rc, sd, &m, "MFS_Lookup");
+  printf ("m.name = %s\n", m.name);
   free(m.name);
   return m.rc;
 }
@@ -119,6 +123,7 @@ int MFS_Stat(int inum, MFS_Stat_t *mfs_stat){
   m.mfs_stat.size = mfs_stat->size;
   m.method = M_Stat;
   m.rc     = -1;
+  m.name   = NULL;
   printf("Client:: sending inum:%d, & mfs_stat \n", inum);
   rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
   // We expect the reply to contain "MFS_Stat"
@@ -139,6 +144,7 @@ int MFS_Write(int inum, char *buffer, int block){
   m.rc     = -1;
   // Efficiently copy one buffer to another
   m.buffer[0] = '\0';
+  m.name   = NULL;
   strncat(m.buffer, buffer, 4096 - 1);
   printf("Client:: sending inum:%d, buffer:%s, block:%d \n", inum, buffer, block);
   rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
@@ -160,6 +166,7 @@ int MFS_Read(int inum, char *buffer, int block){
   // Efficiently copy one buffer to another
   m.buffer[0] = '\0';
   m.rc     = -1;
+  m.name   = NULL;
   strncat(m.buffer, buffer, 4096 - 1);
   printf("Client:: sending inum:%d, buffer:%s, block:%d \n", inum, buffer, block);
   rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
@@ -196,6 +203,7 @@ int MFS_Shutdown(){
   struct msg_r m;
   m.method = M_Shutdown; 
   m.rc     = -1;
+  m.name   = NULL;
   printf("Client:: sending MFS_Shutdown! \n");
   rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
   // We expect the reply to contain "MFS_Read"
