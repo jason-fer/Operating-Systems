@@ -835,6 +835,61 @@ int srv_Creat(int pinum, int type, char *name){
 	// point to "0", otherwise . points to this directory and .. points to pinum
 	// directory block is based on #blocks in use * 4096
 
+		/*
+MFS_Creat(int pinum, int type, char *name)
+
+The operation should create a new file with the given name in the
+directory with inode number pinum. The type is either a regular file or
+a directory.
+
+Think about what needs to be written to the log to make this happen:
+
+the parent directory's data (to add the new name->inum mapping)
+the parent directory's inode (because you modified its data)
+the portion of the inode map referring to the parent directory's inode
+the new inode for the new file
+the portion of the inode map referring to the new file's inode
+
+In addition, if the new file is a directory, it should automatically get
+the . and .. entries added to its contents, referring to its own inode
+number and its parent's inode number, respectively. MFS_Creat does not
+write any default data for regular files.
+
+Note that MFS_Creat returns success if the file already exists. To
+understand why this is the case, think about what should be the correct
+behavior for the following sequence of operations:
+
+the client sends an initial create request
+the server receives and performs the request, creating the new file
+the server sends its response, but the response is lost
+the client times out and resends the request
+		 */
+		
+		/*
+	get next inode
+	write parent dir
+	get parent loc
+	if type == file
+		make file 
+	 else // == dir
+	 	write "." & ".." entries
+
+		// write immediate entry:
+		write data block
+	 	update block pointer in inode
+	 	write inode
+	 	update inode pointer in imap
+	 	write imap
+	 	update checkpoint region with changes
+	 	// update the parent directory
+	 	write data block
+	 	update block pointer in inode
+	 	write inode
+	 	update inode pointer in imap
+	 	write imap
+	 	update checkpoint region with changes
+	 	write checkpoint region (once)
+		 */
 	return 0;
 }
 
