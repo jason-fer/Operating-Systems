@@ -1144,59 +1144,61 @@ void fs_Shutdown(){
  * shutdown by calling exit(0). This interface will mostly be used for testing 
  * purposes.
  */
-int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r m){
+int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 	// Notify client we are shutting down; this is the only method completely 
 	// tied to a client call.
-	rc = UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
+	rc = UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r)); 
 	// @todo: we probably need to call fsync (or an equivalent) before exit!
 	fs_Shutdown();
 	// This will never happen....
 	return 0;
 }
 
-int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r m){
+int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 
-	switch(m.method){
+	switch(m->method){
 		case M_Init:
-			sprintf(m.reply, "MFS_Init");
+			sprintf(m->reply, "MFS_Init");
 			srv_Init();
 			break;
 		case M_Lookup:
-			sprintf(m.reply, "MFS_Lookup");
-			srv_Lookup(m.pinum, m.name);
+			sprintf(m->reply, "MFS_Lookup");
+            printf ("Looking up with m->pinum %d and m->name %s\n", m->pinum, m->name);
+			m->rc = srv_Lookup(m->pinum, m->name);
+            printf ("In server received rc as = %d\n",m->rc);
 			break;
 		case M_Stat:
-			sprintf(m.reply, "MFS_Stat");
-			srv_Stat(m.inum, &m.mfs_stat);
+			sprintf(m->reply, "MFS_Stat");
+			srv_Stat(m->inum, &(m->mfs_stat));
 			break;
 		case M_Write:
-			sprintf(m.reply, "MFS_Write");
-			srv_Write(m.inum, m.buffer, m.block);
+			sprintf(m->reply, "MFS_Write");
+			srv_Write(m->inum, m->buffer, m->block);
 			break;
 		case M_Read:
-			sprintf(m.reply, "MFS_Read");
-			srv_Read(m.inum, m.buffer, m.block);
+			sprintf(m->reply, "MFS_Read");
+			srv_Read(m->inum, m->buffer, m->block);
 			break;
 		case M_Creat:
-			sprintf(m.reply, "MFS_Creat");
-			srv_Creat(m.pinum, m.type, m.name);
+			sprintf(m->reply, "MFS_Creat");
+			srv_Creat(m->pinum, m->type, m->name);
 			break;
 		case M_Unlink:
-			sprintf(m.reply, "MFS_Unlink");
-			srv_Unlink(m.pinum, m.name);
+			sprintf(m->reply, "MFS_Unlink");
+			srv_Unlink(m->pinum, m->name);
 			break;
 		case M_Shutdown:
-			sprintf(m.reply, "MFS_Shutdown");
+			sprintf(m->reply, "MFS_Shutdown");
 			srv_Shutdown(rc, sd, s, m);
 			break;
 		default:
 			printf("SERVER:: method does not exist\n");
-			sprintf(m.reply, "Failed");
+			sprintf(m->reply, "Failed");
 			break;
 	}
 
-	printf("reply: %s\n", m.reply);
-	return UDP_Write(sd, &s, (char *) &m, sizeof(struct msg_r)); 
+	printf("reply: %s\n", m->reply);
+	return UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r)); 
 }
 
 void start_server(int argc, char *argv[]){
@@ -1212,8 +1214,9 @@ void start_server(int argc, char *argv[]){
 	struct sockaddr_in s; 
 	struct msg_r m; 
 	int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
+    printf ("SERVER::m.rc = %d\n", m.rc);
 		if (rc > 0) {
-			rc = call_rpc_func(rc, sd, s, m);
+			rc = call_rpc_func(rc, sd, s, &m);
 			printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
 		}
 	} 

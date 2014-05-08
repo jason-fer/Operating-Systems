@@ -41,7 +41,7 @@ enum methods {
 struct msg_r {
   enum methods method;
   char *name;
-  int pinum, inum, block, type;
+  int pinum, inum, block, type, rc;
   char buffer[4096];
   char reply[16];
   MFS_Stat_t mfs_stat;

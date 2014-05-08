@@ -12,6 +12,7 @@ MFS_Stat_t *my_file;
 
 void test_init(){
 	response = MFS_Init("localhost", 10000);
+    printf ("Client::response %d\n",response);
 	assert(response >= 0);
 	printf("MFS_Init passed\n");  
 }
@@ -41,10 +42,9 @@ void test_stat(){
 }
 
 void test_lookup(){
-	response = MFS_Lookup(0, ".");
-        printf("Inode value received = %d\n", response);
-	assert(response >= 0);
-	printf("MFS_Lookup passed\n");
+  response = MFS_Lookup(0, ".");
+  assert(response >= 0);
+  printf("MFS_Lookup passed\n");
 }
 
 void test_unlink(){
