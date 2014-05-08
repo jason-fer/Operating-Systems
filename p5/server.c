@@ -724,6 +724,17 @@ int srv_Write(int inum, char *buffer, int block){
 	return 0;
 } 
 
+
+int
+getNextInodeNumber() {
+  int i = 0;
+  for (; i < 4096; ++i) {
+    if (get_inode_location(i) < 0) {
+      return i;
+    }
+  }
+}
+
 /**
  * Makes a file (type == MFS_REGULAR_FILE) or directory (type == MFS_DIRECTORY) 
  * in the parent directory specified by pinum of name *name. Returns 0 on 
@@ -745,10 +756,11 @@ int srv_Creat(int pinum, int type, char *name){
 		return -1;
 	}
 
+    int inum = getNextInodeNumber();
     if (type == MFS_REGULAR_FILE) {
-        return mkFile(pinum, name);
+      return mkFile(pinum, name, inum, location);
     } else if (type == MFS_DIRECTORY) {
-        return mkDir(pinum, name);
+      return mkDir(pinum, name, inum, location);
     } 
     
     return -1;
@@ -826,14 +838,17 @@ int srv_Creat(int pinum, int type, char *name){
 }
 
 int
-mkFile(int pinum, char* name) {
-    printf("Here to make a filein parent inode %d and with name %s\n", pinum, name);
+mkFile(int pinum, char* name, 
+       int inum, int location) {
+  printf("Here to make a file in parent inode %d which is location at %d and with name %s\n with file iNode num %d", pinum, location, name, inum);
 }
 
 int
-mkDir(int pinum, char* name) {
-    printf("Here to make a directory in parent inode %d and with name %s\n", pinum, name);
+mkDir(int pinum, char* name, 
+      int inum, int location) {
+  printf("Here to make a file in parent inode %d which is location at %d and with name %s\n with file iNode num %d", pinum, location, name, inum);
 }
+
 /**
  * Removes the file or directory name from the directory specified by pinum. 
  * 0 on success, -1 on failure. 
