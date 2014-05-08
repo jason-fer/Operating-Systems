@@ -732,6 +732,8 @@ getNextInodeNumber() {
 			return i;
 		}  
 	}
+	// fail
+	return -1;
 }
 
 /**
