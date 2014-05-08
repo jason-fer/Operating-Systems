@@ -1126,7 +1126,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 		case M_Lookup:
 			sprintf(m->reply, "MFS_Lookup");
             printf("SERVER:: says I am in lookup case\n");
-            
+            printf ("SERVER:: side name %s\n",m->name);
             if (m->name != NULL) {
               printf ("Looking up with m->pinum %d and m->name %s\n", m->pinum, m->name);
             } else {
@@ -1184,6 +1184,7 @@ void start_server(int argc, char *argv[]){
         struct msg_r m; 
         int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
         printf ("SERVER::m.rc = %d\n", m.rc);
+        printf ("SERVER::m.name = %s\n",m.name);
 		if (rc > 0) {
 			rc = call_rpc_func(rc, sd, s, &m);
 			printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
