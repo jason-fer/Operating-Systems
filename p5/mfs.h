@@ -40,7 +40,7 @@ enum methods {
 
 struct msg_r {
   enum methods method;
-  char *name;
+  char name[128];
   int pinum, inum, block, type, rc;
   char buffer[4096];
   char reply[16];
