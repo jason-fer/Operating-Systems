@@ -50,17 +50,26 @@ int read_imap(int inum, Checkpoint_region_t *cr, Idata_t *c){
 
 	// Get imap
 	lseek(fd, c->imap_loc, SEEK_SET);
-	if(read(fd, &c->imap_ptrs, sizeof(int) * 16) < 0) { 
+	if(read(fd, &c->imap_ptrs, sizeof(int) * 16) < 0) {
 		return -1; 
 	}
 
 	// Get position of inode
 	c->inode_loc = c->imap_ptrs[c->inode_index];
 
-	// Sanity check
-	if (c->inode_loc <= 0 || c->inode_loc > cr->eol_ptr) { 
-		return -1; 
-	}
+	// Don't do this test; it breaks stuff if this is an imap for a NEW inodet
+	// that doesn't exist yet.
+	// if (c->inode_loc <= 0 || c->inode_loc > cr->eol_ptr) { 
+	// 	return -1; 
+	// }
+
+	// int j, curr_inum;
+	// for(j = 0; j < 16; j++){
+	// 	curr_inum = (j + (c->imap_index * 16));
+	// 	printf("imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", j, c->imap_ptrs[j], curr_inum, c->imap_index);
+	// 	// If the checkpoint region location is zero, the inum is free
+	// }
+	// exit(0);
 
 	return 0;
 }
@@ -79,6 +88,12 @@ int read_inode(Checkpoint_region_t *cr, Idata_t *c){
 		return -1; 
 	}
 
+	// int i;
+	// for (i = 0; i < 14; i++){
+	// 	printf("inode_blk_ptrs[%i]:%d\n",i, c->inode_ptrs[i]);
+		
+	// }
+	// exit(0);
 	return 0;
 }
 
@@ -131,13 +146,13 @@ int write_inode(Checkpoint_region_t *cr, Idata_t *c){
 }
 
 // Writes data, point inode to it, update eol_ptr
-int write_data(Checkpoint_region_t *cr, Idata_t *c, int block, char *buffer){
+int write_dir(Checkpoint_region_t *cr, Idata_t *c, int block, MFS_DirEnt_t *d){
 	if(block < 0 || block > 13){
 		return -1;
 	}
 
 	lseek(fd, cr->eol_ptr, SEEK_SET);
-	if(write(fd, &buffer, MFS_BLOCK_SIZE) < 0) { 
+	if(write(fd, d, MFS_BLOCK_SIZE) < 0) { 
 		return -1; 
 	}
 	// Update the inode with our new block location
@@ -167,7 +182,7 @@ int get_next_inode(Checkpoint_region_t *cr){
 		// Check each of the 16 pointers in the imap piece
 		for(j = 0; j < 16; j++){
 			inum = (j + (i * 16));
-			printf("ckpr_ptrs[%d]:%d imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", i, cr->ckpr_ptrs[i],j,temp.imap_ptrs[j], inum, i);
+			// printf("ckpr_ptrs[%d]:%d imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", i, cr->ckpr_ptrs[i],j,temp.imap_ptrs[j], inum, i);
 			// If the checkpoint region location is zero, the inum is free
 			if(temp.imap_ptrs[j] == 0) {
 				is_found = 1;
@@ -853,9 +868,9 @@ int srv_Creat(int pinum, int type, char *name){
 	printf("SERVER:: you called MFS_Creat\n");
 	int i,j;
 
-	// Assume success if the name already exists
 	int rs = srv_Lookup(pinum, name);
 	if (rs == 0) {
+		// Success if the name already exists
 		return 0;
 	}
 
@@ -938,7 +953,6 @@ int srv_Creat(int pinum, int type, char *name){
 	}
 	// <-- Find dir entry end
 
-
 	// <--- update child start
 	if (type == MFS_DIRECTORY) {
 	// Write a data block for the new directory
@@ -957,7 +971,7 @@ int srv_Creat(int pinum, int type, char *name){
 			new_dir[i].inum    = -1;
 		}
 
-		rs = write_data(&cr, &c, 0, (char*) &new_dir);
+		rs = write_dir(&cr, &c, 0, &new_dir[0]);
 		assert(rs != -1);
 	}
 
@@ -972,7 +986,7 @@ int srv_Creat(int pinum, int type, char *name){
 
 
 	// <--- update parent start
-	rs = write_data(&cr, &p, dir_entry_block, (char*) &dir_entries);
+	rs = write_dir(&cr, &p, dir_entry_block, &dir_entries[0]);
 	assert(rs != -1);
 
 	rs = write_inode(&cr, &p);
@@ -1387,11 +1401,11 @@ int main(int argc, char *argv[]){
 	// int rs = srv_Unlink(6, "turtles"); // should fail
 	// int rs = srv_Unlink(0, "dir");
 	// assert(rs >= 0);
-	// dump_log();
 
 	int rs = srv_Creat(0, MFS_REGULAR_FILE, "awesome!!");
 	assert(rs == 0);
 	// srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
+	dump_log();
 
 	// MFS_Stat_t m;
 	// srv_Stat(1, &m);
