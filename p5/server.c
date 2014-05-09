@@ -68,14 +68,6 @@ int get_next_inode(){
 	// ckpr_ptrs[0]:118468 imap_ptrs[13]:0 inum:13, imap piece#:0 <--what we want
 }
 
-// Gets the next free data-block. Returns -1 if a directory is completely full.
-int get_next_block(int inum){
-
-	//@todo: loop through inode looking for either an unused directory space
-	//if all 14x blocks are completely full, return an error
-	return -1;
-}
-
 // Dump contents of the current file
 void dump_file_inode(int fd, int file_loc, int file_size){
 	int inode_blk_ptrs[14];
@@ -97,12 +89,6 @@ void dump_file_inode(int fd, int file_loc, int file_size){
  
 		// printf("inode_blk_ptrs[%i]:%d, data block[%d] contents: \n%s\n",i, inode_blk_ptrs[i], buffer);
 
-		// XXXXXXXXXXXXXXXXXXXXXX TEMP XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-		// prevents crazy log dump...
-		if(file_size > MFS_BLOCK_SIZE){
-			file_size = MFS_BLOCK_SIZE;
-		}
-		// XXXXXXXXXXXXXXXXXXXXXX TEMP XXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 		while(file_size > 0) {
 			// printf("curr file size: %d\n", file_size);
 			// Keep reading forward on file...
@@ -765,14 +751,6 @@ int srv_Write(int inum, char *buffer, int block){
 		return -1; 
 	}
 
-	// printf("imap_loc XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX: %d\n", imap_loc);
-	// lseek(fd, (imap_index * 4) + 4, SEEK_SET);
-	// int temp;
-	// read(fd, &temp, 4);
-	// printf("TEMP XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX: %d\n", temp);
-	// int tmp_val = (imap_index * 4);
-	// printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> imap index: %d\n", tmp_val);
-
 	// 5-update our end of log ptr to point to the new imap
 	lseek(fd, 0, SEEK_SET);
 	if(write(fd, &eol_ptr, sizeof(int)) < 0) { 
@@ -788,6 +766,7 @@ int srv_Write(int inum, char *buffer, int block){
 
 // Assumes get_next_inode() just ran
 int mkFile(int pinum, int inum, char *name) {
+	int i,j;
 
 	// Set up our new inode struct
 	Inode_t curr_inode;
@@ -800,11 +779,72 @@ int mkFile(int pinum, int inum, char *name) {
 		inode_ptrs[i] = 0;
 	}
 
-	// Find the first free data-block in our parent dir
-	int data_block = get_next_block(pinum);
-	if(data_block == -1){
+	// <------------- read in the parent pimap / pinode start
+	int pimap_index = pinum / 16;
+	int pimap_loc = ckpr_ptrs[pimap_index];
+	int pinode_index = pinum % 16;
+	int pimap_ptrs[16];
+	lseek(fd, pimap_loc, SEEK_SET);
+	// Read in imap
+	if(read(fd, &pimap_ptrs, sizeof(int) * 16) < 0) { 
+		return -1; 
+	}
+	int pinode_loc = pimap_ptrs[pinode_index];
+	if (pinode_loc <= 0 || pinode_loc > eol_ptr) { 
+		return -1; 
+	}
+	// Get the inode
+	Inode_t curr_pinode;
+	lseek(fd, pinode_loc, SEEK_SET);
+	if (read(fd, &curr_pinode, sizeof(Inode_t)) < 0) { 
+		return -1; 
+	}
+	int pinode_ptrs[14];
+	lseek(fd, (pinode_loc + sizeof(Inode_t)), SEEK_SET);
+	if (read(fd, &pinode_ptrs, sizeof(int) * 14) < 0) { 
+		return -1; 
+	}
+	// Always use the first free directory entry
+	MFS_DirEnt_t dir_entries[64];
+	int dir_entry_block = -1;
+	for (i = 0; i < 14; i++) {
+		if(dir_entry_block >= 0) {
+			break;
+		}
+		// We found an empty directory block first; use it.
+		if(pinode_ptrs[i] == 0) {
+			// Init directory to zero; but make this our first entry
+			strcpy(dir_entries[0].name, name);
+			dir_entries[0].inum = inum;
+			for(j = 1; j < 64; j++){
+				dir_entries[j].inum    = -1;
+				dir_entries[j].name[0] = '\0';
+			}
+			dir_entry_block = i;
+			break;
+		}
+		// Read the current in-use directory block
+		lseek(fd, pinode_ptrs[i], SEEK_SET);
+		if (read(fd, &dir_entries, MFS_BLOCK_SIZE) < 0) { 
+			return -1; 
+		}
+		int count = 0;
+		while(count < 64) {
+			if (dir_entries[count].inum == -1) { 
+				// We found an available directory entry
+				strcpy(dir_entries[count].name, name);
+				dir_entries[count].inum = inum;
+				dir_entry_block = i;
+				break;
+			}
+			count++;
+		}
+	}
+	// The directory must have been full; we can't continue.
+	if(dir_entry_block < 0){
 		return -1;
 	}
+	// read in the parent pimap / pinode end --------------->
 
 	// Write our inode to the EOL:
 	lseek(fd, eol_ptr, SEEK_SET);
@@ -843,26 +883,36 @@ int mkFile(int pinum, int inum, char *name) {
 	} // We are now done with the child.
 
 	// Update the parent directory data block with our new directory entry
-	// Write the new parent data block
-
-	// Write the updated parent imap
-	int pimap_index = pinum / 16;
-	int pimap_loc = ckpr_ptrs[pimap_index];
-	int pinode_index = pinum % 16;
-	int pimap_ptrs[16];
-	lseek(fd, pimap_loc, SEEK_SET);
-	if(read(fd, &pimap_ptrs, sizeof(int) * 16) < 0) { 
+	lseek(fd, eol_ptr, SEEK_SET);// We are seeking back to the end of the log, yes this is inefficient.. 
+	if(write(fd, &dir_entries, MFS_BLOCK_SIZE) < 0) { 
 		return -1; 
 	}
-	
-	// Update the checkpoitn region with our new imap location
+	pinode_ptrs[dir_entry_block] = eol_ptr;
+	eol_ptr += MFS_BLOCK_SIZE; // <--this is now our inode location...
+	if (write(fd, &curr_pinode, sizeof(Inode_t)) < 0) { 
+		return -1; 
+	}
+	if (write(fd, &pinode_ptrs, (sizeof(int) * 14)) < 0) { 
+		return -1; 
+	}
+	// Point the inode data-block to our new address
+	pimap_ptrs[pinode_index] = eol_ptr;
+	pimap_loc = eol_ptr; // <--need to point checkpoint region to imap piece
+	eol_ptr += (sizeof(Inode_t) + (sizeof(int) * 14)); // Size of inode + ptrs
+	if(write(fd, &imap_ptrs, sizeof(int) * 16) < 0) { 
+		return -1; 
+	}
 
-	// Update our end of log ptr to point to the new imap
+	eol_ptr += (sizeof(int) * 16); // Size of imap
+	lseek(fd, (pimap_index * 4) + 4, SEEK_SET);
+	if (write(fd, &pimap_loc, sizeof(int)) < 0) { 
+		return -1; 
+	}
 	lseek(fd, 0, SEEK_SET);
 	if (write(fd, &eol_ptr, sizeof(int)) < 0) { 
 		return -1; 
 	}
-	
+	fsync(fd);
 	return 0;
 }
 
