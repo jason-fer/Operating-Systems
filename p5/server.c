@@ -776,7 +776,7 @@ int srv_Stat(int inum, MFS_Stat_t *m){
 	}
 	
 	m->size = currInode->size;
-    printf ("SERVER:: In function **STAT** Got file size %d\n", currInode->size);
+  // printf ("SERVER:: In function **STAT** Got file size %d\n", currInode->size);
 	m->type = currInode->type;
 	free(currInode);
 	currInode = NULL;
@@ -813,18 +813,21 @@ int srv_Write(int inum, char *buffer, int block){
 		return -1; 
 	}
 	
-	// Add the new buffer to the total file size
-	int file_size = 4096;
+	// filesize = mfs_blocks_used * MFS_BLOCK_SIZE
+	int mfs_blocks_used = 1;
 	int i = 0;
 	for (; i < 14; i++){
 		// This is the block we are replacing; ignore it.
-		if (i == block || c.inode_ptrs[i] <= 0){
+		if (c.inode_ptrs[i] <= 0){
 			continue;
 		}
-		file_size += 4096;
+		mfs_blocks_used = (i + 1);
+	}
+	if ((block + 1) > mfs_blocks_used) {
+		mfs_blocks_used = block + 1;
 	}
 
-	c.curr_inode.size = file_size;
+	c.curr_inode.size = mfs_blocks_used * MFS_BLOCK_SIZE;
 	assert(c.curr_inode.size >= 0 && c.curr_inode.size <= MFS_BLOCK_SIZE * 14);
 	// printf("new size: %d\n", curr_inode->size);
 

@@ -183,7 +183,7 @@ int MFS_Read(int inum, char *buffer, int block){
   m.inum = inum;
   m.block = block;
   // Efficiently copy one buffer to another
-  // buffer[0] = '\0';
+  buffer[0] = '\0';
   m.rc     = -1;
   m.name[0] = '\0';
 
@@ -195,8 +195,9 @@ int MFS_Read(int inum, char *buffer, int block){
   printf("Client:: sending inum:%d, buffer:%s, block:%d \n", inum, buffer, block);
   rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
   // We expect the reply to contain "MFS_Read"
-  strcpy(buffer,m.buffer);
-  // strncat(buffer, m.buffer, 4096 - 1);
+  // strcpy(buffer,m.buffer);
+  // memcpy(buffer, &m.buffer, 4096);
+  strncat(buffer, m.buffer, 4096);
   // printf("m.buffer contains: \n%s\n", m.buffer);
   // printf("buffer contains: \n%s\n", buffer);
   return read_reply(rc, sd, &m, "MFS_Read");
