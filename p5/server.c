@@ -271,7 +271,6 @@ int dump_log(){
 	int rc;
 	int i = 0;
 	int j = 0;
-	int count = 0; //, prev = 0;
 	for (; i < 256; i++){
 		// Make sure we read from the right position...
 		lseek(fd, i * 4, SEEK_SET);
@@ -280,10 +279,9 @@ int dump_log(){
 			printf("1st checkpoint ptr: %d\n", ckpt_rg);
 			continue;
 		}
+		if(ckpt_rg == 0) continue;
 		// prev = ckpt_rg;
-		count++;
 		// printf("ckpt_rg %d: %d, ckpt_rg - prev:%d\n", i, ckpt_rg, ckpt_rg - prev);
-		if(count > 4) break;
 		// Find the imap piece
 		// lseek(fd, ckpt_rg, SEEK_SET);
 		// Now we read from the checkpoint region to find where the imap piece is
@@ -300,9 +298,10 @@ int dump_log(){
 			}
 			int the_imap = i - 1;
 			int the_inum = (j + ((i - 1) * 16));
-			if(inode_loc == 0) continue;
+			// if(inode_loc == 0) continue;
 			// printf("inode_loc: %d, ckpt_rg: %d, inum: %d, j: %d, i: %d \n", inode_loc, (ckpt_rg - 64) + (j * 4), the_inum, j, i);
 			printf("inode_loc: %d, ckpt_rg: %d, inum: %d, imap piece#: %d \n", inode_loc, (ckpt_rg - 64) + (j * 4), the_inum, the_imap);
+			continue;
 			lseek(fd, inode_loc, SEEK_SET);
 			// continue;
 			Inode_t curr_inode;
@@ -385,6 +384,78 @@ int get_inode_location(int inum) {
 	return location;
 }
 
+// int init_disk(){
+// 	int i, j, inum, rs;
+// 	fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
+// 	if (fd < 0) {
+// 		printf("Open error\n");
+// 		exit(1);
+// 	}
+
+// 	Checkpoint_region_t cr;
+// 	// Set EOL just past the CR
+// 	cr.eol_ptr = (4 + 256*sizeof(int));
+// 	// init CR to zero
+// 	i = 0;
+// 	for (; i < 256; ++i) {
+// 		cr.ckpr_ptrs[i] = 0;
+// 	}
+
+// 	Idata_t c;
+// 	c.imap_index = 0;
+// 	c.imap_loc = (4 + 256*4 + 4096 + sizeof(Inode_t) + 14*sizeof(int));
+// 	c.inode_index = 0;
+
+// 	// Set up imap
+// 	i = 0;
+// 	for (; i < 16; i++) {
+// 		c.imap_ptrs[i] = 0;
+// 	}
+
+// 	// Set up inode
+// 	c.curr_inode.type = MFS_DIRECTORY;
+// 	c.curr_inode.size = 4096;
+// 	// Set the other inode block pointers to zero
+// 	i = 0;
+// 	for (; i < 14; i++) {
+// 		c.inode_ptrs[i] = 0;
+// 	}
+
+// 	// Set up directory entries
+// 	MFS_DirEnt_t dir_entries[64];
+// 	j = 0;
+// 	for (; i < 64; i++) {
+// 		dir_entries[i].name[0] = '\0';
+// 		dir_entries[i].inum    = -1;
+// 	}
+
+// 	dir_entries[0].name[0] = '.';
+// 	dir_entries[0].name[1] = '\0';
+// 	dir_entries[0].inum    = 0;
+// 	dir_entries[1].name[0] = '.';
+// 	dir_entries[1].name[1] = '.';
+// 	dir_entries[1].name[2] = '\0';
+// 	dir_entries[1].inum    = 0;
+
+// 	rs = write_dir(&cr, &c, 0, &dir_entries[0]);
+// 	assert(rs != -1);
+
+// 	// Write the new & empty inode
+// 	rs = write_inode(&cr, &c);
+// 	assert(rs != -1);
+
+// 	// Write the imap
+// 	rs = write_imap(&cr, &c);
+// 	assert(rs != -1);
+// 	// update child end ---->
+
+// 	// Update the checkpoint region
+// 	rs = write_cr(&cr, &c);
+// 	assert(rs != -1);
+
+// 	return 0;
+// }
+
 int initDisk() {
 	fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
 	if (fd < 0) {
@@ -409,7 +480,6 @@ int initDisk() {
 	if (write(fd, &imapPieceIdxArr, 256*sizeof(int)) < 0) {
 		return -1;
 	}
-
 
 	lseek(fd, 257*sizeof(int),SEEK_SET);
 
@@ -470,6 +540,14 @@ int initDisk() {
 	}
 
 	fsync(fd);
+
+	// Checkpoint_region_t cr;
+	// int rs = read_cr(&cr);
+	// i = 0;
+	// for (; i < 256; ++i) {
+	// 	printf("CHECKPOINT PTR[%d]%d\n", i, cr.ckpr_ptrs[i]);
+	// }
+
 	return 0;
 }
  
@@ -1420,16 +1498,17 @@ void start_server(int argc, char *argv[]){
 int main(int argc, char *argv[]){
 
 	// Disable this to test methods without running the server...
-	start_server(argc, argv);
+	// start_server(argc, argv);
 
 	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
 	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
 	// int inum;
 
-	// srv_Init();
+	filename = "new.img";
+	srv_Init();
 
-	// dump_log();
+	dump_log();
 	
 	// srv_Lookup(0, ".");
 	// char buffer[MFS_BLOCK_SIZE];

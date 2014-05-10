@@ -17,4 +17,4 @@ client: client.o udp.o mfs.o
 	$(CC) -o client client.o -L. libmfs.so $(OPTS)
 
 clean:
-	rm -f server.o udp.o client.o server client libmfs.so mfs.o
+	rm -f server.o udp.o client.o server client libmfs.so mfs.o new.img
