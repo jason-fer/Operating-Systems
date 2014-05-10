@@ -711,46 +711,43 @@ int srv_Read(int inum, char *buffer, int block) {
 		return 0;
 	} else {
 		int count         = 0;
-		int actualEntries = 0;
+		/* int actualEntries = 0; */
 		MFS_DirEnt_t dirEntry;
 
-		while(count != 64) {
-			++count;
-			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
-				continue;
-			}
-				
-			if (dirEntry.inum == -1) {
-				continue;
-			}
-			++actualEntries;
-		}
-			
-		MFS_DirEnt_t* returnVal = malloc(actualEntries*sizeof(actualEntries));
-			
-		count          = 0;
-		int numEntries = 0;
+		MFS_DirEnt_t* returnVal = malloc(64*sizeof(MFS_DirEnt_t));
 
 		while(count != 64) {
-			++count;
-
-			if (numEntries == actualEntries) {
-				break;
-			}
-
 			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
-				continue;
+              returnVal[count].name[0] = '\0';
+              returnVal[count++].inum  = -1;
+              continue;
 			}
-				
-			if (dirEntry.inum == -1) {
-				continue;
-			}
-				
-			returnVal[numEntries++] = dirEntry;
+            returnVal[count++] = dirEntry;
 		}
+			
+			
+		/* count          = 0; */
+		/* int numEntries = 0; */
+
+		/* while(count != 64) { */
+		/* 	++count; */
+
+		/* 	if (numEntries == actualEntries) { */
+		/* 		break; */
+		/* 	} */
+
+		/* 	if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) { */
+		/* 		continue; */
+		/* 	} */
+				
+		/* 	if (dirEntry.inum == -1) { */
+		/* 		continue; */
+		/* 	} */
+				
+		/* 	returnVal[numEntries++] = dirEntry; */
+		/* } */
 
 		buffer = (char*)returnVal;
-		free(returnVal);
 		return 0;
 	}
 }
@@ -778,6 +775,7 @@ int srv_Stat(int inum, MFS_Stat_t *m){
 	}
 	
 	m->size = currInode->size;
+    printf ("SERVER:: In function **STAT** Got file size %d\n", currInode->size);
 	m->type = currInode->type;
 	free(currInode);
 	currInode = NULL;
@@ -1355,6 +1353,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 		case M_Stat:
 			sprintf(m->reply, "MFS_Stat");
 			m->rc = srv_Stat(m->inum, &(m->mfs_stat));
+            printf ("Got file size %d\n", m->mfs_stat.size);
 			break;
 		case M_Write:
 			sprintf(m->reply, "MFS_Write");
