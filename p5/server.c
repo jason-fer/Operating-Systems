@@ -4,13 +4,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-// char* filename = NULL;
-char* filename = "example.img";
+char* filename = NULL;
+// char* filename = "example.img";
 // char* filename = "bare.img";
 int* port;
 int fd = 0;
 
-// Checkpoint region
+// Checkpoint region (we should never have more than one of these!)
 typedef struct __Checkpoint_region_t {
 	int eol_ptr; // End of Log pointer
 	// Our 256 imap pointers... each with 16 inode refs; 4096 max inums
@@ -105,6 +105,8 @@ int write_cr(Checkpoint_region_t *cr, Idata_t *c){
 		return -1; 
 	} // We are now done with the child.
 
+	// printf("CR Region update: c->imap_loc: %d\n", c->imap_loc);
+
 	// Update the EOL pointer
 	lseek(fd, 0, SEEK_SET);
 	if (write(fd, &cr->eol_ptr, sizeof(int)) < 0) { 
@@ -116,13 +118,14 @@ int write_cr(Checkpoint_region_t *cr, Idata_t *c){
 
 // Expects an inode was just written
 int write_imap(Checkpoint_region_t *cr, Idata_t *c){
+	lseek(fd, cr->eol_ptr, SEEK_SET);
 	if(write(fd, &c->imap_ptrs, sizeof(int) * 16) < 0) { 
 		return -1; 
 	}
 	// Our new imap piece loc which we will put in the checkpoint region
 	c->imap_loc = cr->eol_ptr;
+	// printf("cr->eol_ptr / c->imap_loc: %d\n", cr->eol_ptr);
 	cr->eol_ptr += (sizeof(int) * 16); // Size of imap
-
 	return 0;
 }
 
@@ -140,6 +143,7 @@ int write_inode(Checkpoint_region_t *cr, Idata_t *c){
 
 	// Update our imap & EOL
 	c->imap_ptrs[c->inode_index] = cr->eol_ptr;
+	// printf("c->imap_ptrs[c->inode_index] / imap_ptr: %d\n", cr->eol_ptr);
 	cr->eol_ptr += (sizeof(Inode_t) + (sizeof(int) * 14)); // Size of inode + ptrs
 
 	return 0;
@@ -150,6 +154,9 @@ int write_dir(Checkpoint_region_t *cr, Idata_t *c, int block, MFS_DirEnt_t *d){
 	if(block < 0 || block > 13){
 		return -1;
 	}
+	// for (int i = 0; i < 64; ++i)	{
+	// 	printf("inum:%d, name:%s\n", (d+i)->inum, (d+i)->name);
+	// }
 
 	lseek(fd, cr->eol_ptr, SEEK_SET);
 	if(write(fd, d, MFS_BLOCK_SIZE) < 0) { 
@@ -159,6 +166,7 @@ int write_dir(Checkpoint_region_t *cr, Idata_t *c, int block, MFS_DirEnt_t *d){
 	c->inode_ptrs[block] = cr->eol_ptr;
 	// Shift the end of log pointer behind the new data...
 	cr->eol_ptr += MFS_BLOCK_SIZE;
+	// printf("cr->eol_ptr / inode block pointer: %d\n", cr->eol_ptr);
 
 	return 0;
 }
@@ -296,6 +304,7 @@ int dump_log(){
 			// printf("inode_loc: %d, ckpt_rg: %d, inum: %d, j: %d, i: %d \n", inode_loc, (ckpt_rg - 64) + (j * 4), the_inum, j, i);
 			printf("inode_loc: %d, ckpt_rg: %d, inum: %d, imap piece#: %d \n", inode_loc, (ckpt_rg - 64) + (j * 4), the_inum, the_imap);
 			lseek(fd, inode_loc, SEEK_SET);
+			// continue;
 			Inode_t curr_inode;
 			if (read(fd, &curr_inode, sizeof(Inode_t)) < 0) { continue; }
 			// Parent inode numbers can only belong to directories
@@ -465,7 +474,7 @@ int initDisk() {
 }
  
 int srv_Init() {
-	printf("SERVER:: you called MFS_Init\n");
+	// printf("SERVER:: you called MFS_Init\n");
 	fd = open(filename, O_RDWR, S_IRWXU);
 	if (fd < 0) {
 		return initDisk();
@@ -480,7 +489,7 @@ int srv_Init() {
  * modes: invalid pinum, name does not exist in pinum.
  */
 int srv_Lookup(int pinum, char *name) {
-	printf("SERVER:: you called MFS_Lookup\n");
+	// printf("SERVER:: you called MFS_Lookup\n");
 	// Ignore invalid parent inode numbers
 	if (pinum < 0 || pinum > 4095) {
 		return -1;
@@ -560,7 +569,7 @@ int srv_Read(int inum, char *buffer, int block) {
 	// don't allow non-sensical blocks (lt 0, or gt 13)
 	if(block < 0 || block > 13) return -1;
 
-	printf("SERVER:: you called MFS_Read\n");
+	// printf("SERVER:: you called MFS_Read\n");
 
 	int location = get_inode_location(inum);
 	if (location < 0) {
@@ -666,7 +675,7 @@ int srv_Read(int inum, char *buffer, int block) {
  * Failure modes: inum does not exist.
  */
 int srv_Stat(int inum, MFS_Stat_t *m){
-	printf("SERVER:: you called MFS_Stat\n");
+	// printf("SERVER:: you called MFS_Stat\n");
 	int location = get_inode_location(inum);
 	if (location < 0) {
 		return -1;
@@ -695,7 +704,7 @@ int srv_Stat(int inum, MFS_Stat_t *m){
  * block, not a regular file (because you can't write to directories).
  */
 int srv_Write(int inum, char *buffer, int block){
-	printf("SERVER:: you called MFS_Write\n");
+	// printf("SERVER:: you called MFS_Write\n");
 	// Check for valid block: 0 to 13 or invalid inum
 	if(block < 0 || block > 13 || inum < 0 || inum >= MFS_BLOCK_SIZE) {
 		return -1;
@@ -865,7 +874,7 @@ int srv_Write(int inum, char *buffer, int block){
  * long. If name already exists, return success.
  */
 int srv_Creat(int pinum, int type, char *name){
-	printf("SERVER:: you called MFS_Creat\n");
+	// printf("SERVER:: you called MFS_Creat\n");
 	int i,j;
 
 	int rs = srv_Lookup(pinum, name);
@@ -878,10 +887,12 @@ int srv_Creat(int pinum, int type, char *name){
 	Checkpoint_region_t cr;
 	rs = read_cr(&cr);
 	if(rs == -1) return -1;
+
 	// Read in the parent imap
 	Idata_t p;
 	rs = read_imap(pinum, &cr, &p);
 	assert(rs != -1);
+
 	// Read in the parent inode
 	rs = read_inode(&cr, &p);
 	assert(rs != -1);
@@ -889,11 +900,14 @@ int srv_Creat(int pinum, int type, char *name){
 	// Determine the inode to assign
 	int inum = get_next_inode(&cr);
 	assert(inum > 0);
+
 	// Set up our new inode & imap struct
 	Idata_t c;
+
 	// Read in the imap for the new item
 	rs = read_imap(inum, &cr, &c);
 	assert(rs != -1);
+
 	// Set the inode data
 	c.curr_inode.type = type;
 	// If this is a file, size == 0
@@ -906,7 +920,6 @@ int srv_Creat(int pinum, int type, char *name){
 	for (i = 0; i < 14; i++) {
 		c.inode_ptrs[i] = 0;
 	}
-	
 
 	// Find dir entry start -->
 	// Always use the first free directory entry
@@ -984,6 +997,10 @@ int srv_Creat(int pinum, int type, char *name){
 	assert(rs != -1);
 	// update child end ---->
 
+	if(c.imap_index == p.imap_index){
+		// Sync things up since we will only be writing one imap.... 
+		p.imap_loc = c.imap_loc;
+	}
 
 	// <--- update parent start
 	rs = write_dir(&cr, &p, dir_entry_block, &dir_entries[0]);
@@ -992,15 +1009,30 @@ int srv_Creat(int pinum, int type, char *name){
 	rs = write_inode(&cr, &p);
 	assert(rs != -1);
 
-	// Write the imap
-	rs = write_imap(&cr, &p);
-	assert(rs != -1);
+	if(c.imap_index != p.imap_index){
+		// We need to write a second, completely separate imap piece...
+		rs = write_imap(&cr, &p);
+		assert(rs != -1);
+	}
 
 	// Update the checkpoint region
 	rs = write_cr(&cr, &p);
 	assert(rs != -1);
 	// update parent end ---->
 
+	// int curr_inum;
+	// printf("CURR IMAP:\n");
+	// for(j = 0; j < 16; j++){
+	// 	curr_inum = (j + (c.imap_index * 16));
+	// 	printf("imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", j, c.imap_ptrs[j], curr_inum, c.imap_index);
+	// 	// If the checkpoint region location is zero, the inum is free
+	// }
+	// printf("PARENT IMAP:\n");
+	// for(j = 0; j < 16; j++){
+	// 	curr_inum = (j + (p.imap_index * 16));
+	// 	printf("imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", j, p.imap_ptrs[j], curr_inum, p.imap_index);
+	// 	// If the checkpoint region location is zero, the inum is free
+	// }
 
 	fsync(fd);
 	return 0;
@@ -1014,7 +1046,7 @@ int srv_Creat(int pinum, int type, char *name){
  * multiple requests that are the same...).
  */
 int srv_Unlink(int pinum, char *name){
-	printf("SERVER:: you called MFS_Unlink\n");
+	// printf("SERVER:: you called MFS_Unlink\n");
 	// Check for invalid inum
 	if(pinum < 0 || pinum >= MFS_BLOCK_SIZE) 
 		return -1;
@@ -1174,7 +1206,7 @@ int srv_Unlink(int pinum, char *name){
 				
 			// If we reach this point, we know this directory is not empty... 
 			// we can't delete a non-empty directory...
-			printf("can't delete a non-empty directory.....\n");
+			// printf("can't delete a non-empty directory.....\n");
 			return -1;
 			// printf("directory: count:%d ulink: inum:%d, dir:%s\n", count, unlink_dir.inum, unlink_dir.name);
 			}
@@ -1280,7 +1312,7 @@ void fs_Shutdown(){
 	assert(rs != -1);
 	rs = close(fd);
 	assert(rs != -1);
-	printf("SERVER:: you called MFS_Shutdown\n");
+	// printf("SERVER:: you called MFS_Shutdown\n");
 	exit(0);
 }
 
@@ -1301,7 +1333,7 @@ int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 
 int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 
-	printf ("SERVER::rpc_func got m as %p\n",m);
+	// printf ("SERVER::rpc_func got m as %p\n",m);
 	switch(m->method){
 		case M_Init:
 			sprintf(m->reply, "MFS_Init");
@@ -1309,8 +1341,8 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 			break;
 		case M_Lookup:
 			sprintf(m->reply, "MFS_Lookup");
-			printf("SERVER:: says I am in lookup case\n");
-			printf ("SERVER:: side name %s\n",m->name);
+			// printf("SERVER:: says I am in lookup case\n");
+			// printf ("SERVER:: side name %s\n",m->name);
 			if (m->name != NULL) {
 				printf ("Looking up with m->pinum %d and m->name %s\n", m->pinum, m->name);
 			} else {
@@ -1318,7 +1350,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 			}
 
 			m->rc = srv_Lookup(m->pinum, m->name);
-			printf ("In server received rc as = %d\n",m->rc);
+			// printf ("In server received rc as = %d\n",m->rc);
 			break;
 		case M_Stat:
 			sprintf(m->reply, "MFS_Stat");
@@ -1350,7 +1382,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 			break;
 	}
 
-	printf("reply: %s\n", m->reply);
+	// printf("reply: %s\n", m->reply);
 	return UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r)); 
 }
 
@@ -1361,17 +1393,17 @@ void start_server(int argc, char *argv[]){
 	sd = UDP_Open(port); 
 	assert(sd > -1);
 
-	printf("SERVER:: waiting in loop\n");
+	// printf("SERVER:: waiting in loop\n");
 
 	while (1) { 
 		struct sockaddr_in s; 
 		struct msg_r m; 
 		int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
-		printf ("SERVER::m.rc = %d\n", m.rc);
-		printf ("SERVER::m.name = %s\n",m.name);
+		// printf ("SERVER::m.rc = %d\n", m.rc);
+		// printf ("SERVER::m.name = %s\n",m.name);
 		if (rc > 0) {
 			rc = call_rpc_func(rc, sd, s, &m);
-			printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
+			// printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
 		}
 	} 
 }
@@ -1381,15 +1413,16 @@ void start_server(int argc, char *argv[]){
  */
 int main(int argc, char *argv[]){
 
+	// srv_Init();
+	
 	// Disable this to test methods without running the server...
-	// start_server(argc, argv);
+	start_server(argc, argv);
 
 	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
 	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
 	// int inum;
 
-	srv_Init();
 
 	// dump_log();
 	
@@ -1402,10 +1435,10 @@ int main(int argc, char *argv[]){
 	// int rs = srv_Unlink(0, "dir");
 	// assert(rs >= 0);
 
-	int rs = srv_Creat(0, MFS_REGULAR_FILE, "awesome!!");
-	assert(rs == 0);
-	// srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
-	dump_log();
+	// int rs = srv_Creat(0, MFS_REGULAR_FILE, "awesome!!");
+	// // int rs = srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
+	// assert(rs == 0);
+	// dump_log();
 
 	// MFS_Stat_t m;
 	// srv_Stat(1, &m);
