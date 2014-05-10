@@ -118,14 +118,15 @@ int MFS_Init(char *hostname, int port) {
 int MFS_Creat(int pinum, int type, char *name){
   struct msg_r m;
   // printf("Client:: sending pinum:%d, type:%d, name:%s \n", pinum, type, name);
-  m.method = M_Creat;
-  m.pinum = pinum;
-  m.type = type;
-  strcpy(m.name, name);
-  m.buffer[0] = '\0';
-  m.rc     = -1;
+  m.method      = M_Creat;
+  m.pinum       = pinum;
+  m.type        = type;
+  m.buffer[0]   = '\0';
+  m.rc          = -1;
 
   int rc_select = -1;
+
+  strcpy(m.name, name);
 
   while (rc_select < 0) {
       rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));

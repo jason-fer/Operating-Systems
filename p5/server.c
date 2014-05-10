@@ -162,7 +162,7 @@ int write_file(Checkpoint_region_t *cr, Idata_t *c, int block, char *d){
 }
 
 // Requires read_cr first!
-int get_next_inode(Checkpoint_region_t *cr){
+int get_next_inode(Checkpoint_region_t *cr) {
   /* // Loop through the 256 checkpoint region pointers */
   /*   Idata_t temp; */
   /*   int i; */
@@ -190,12 +190,14 @@ int get_next_inode(Checkpoint_region_t *cr){
   /*   return inum; */
 
   int i = 0;
+  printf ("cr->eol %d\n", cr->eol_ptr);
   for(; i < 4096; ++i) {
     int iNodeLoc = get_inode_location(i);
     if (iNodeLoc < 0) {
       return i;
     } 
-    
+
+    printf ("iNodeLoc %d for i= %d\n",iNodeLoc, i);
     if (iNodeLoc == cr->eol_ptr) {
       return i;
     }
@@ -1107,7 +1109,7 @@ void fs_Shutdown(){
 	rs = close(fd);
 	assert(rs != -1);
 	// printf("SERVER:: you called MFS_Shutdown\n");
-	exit(0);
+	/* exit(0); */
 }
 
 /**
@@ -1115,82 +1117,82 @@ void fs_Shutdown(){
  * shutdown by calling exit(0). This interface will mostly be used for testing 
  * purposes.
  */
-int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
-	// Notify client we are shutting down; this is the only method completely
-	// tied to a client call.
-	rc = UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r));
-	fs_Shutdown();
-	return 0;
-}
+/* int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r* m){ */
+/* 	// Notify client we are shutting down; this is the only method completely */
+/* 	// tied to a client call. */
+/* 	fs_Shutdown(); */
+/* 	rc = UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r)); */
+/*     exit(0); */
+/* } */
 
-int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
-	// printf ("SERVER::rpc_func got m as %p\n",m);
-	m->rc = 0;// assume success
+/* int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){ */
+/* 	// printf ("SERVER::rpc_func got m as %p\n",m); */
+/* 	m->rc = 0;// assume success */
 
-	switch(m->method){
-		case M_Init:
-			sprintf(m->reply, "MFS_Init");
-			m->rc = srv_Init();
-			break;
-		case M_Lookup:
-			sprintf(m->reply, "MFS_Lookup");
-			m->rc = srv_Lookup(m->pinum, m->name);
-			break;
-		case M_Stat:
-			sprintf(m->reply, "MFS_Stat");
-			m->rc = srv_Stat(m->inum, &(m->mfs_stat));
-			// printf ("Got file size %d\n", m->mfs_stat.size);
-			break;
-		case M_Write:
-			sprintf(m->reply, "MFS_Write");
-			m->rc = srv_Write(m->inum, m->buffer, m->block);
-			break;
-		case M_Read:
-			sprintf(m->reply, "MFS_Read");
-			m->rc = srv_Read(m->inum, m->buffer, m->block);
-            // printf ("Got buffer as %s\n",m->buffer);
-			break;
-		case M_Creat:
-			sprintf(m->reply, "MFS_Creat");
-			m->rc = srv_Creat(m->pinum, m->type, m->name);
-			break;
-		case M_Unlink:
-			sprintf(m->reply, "MFS_Unlink");
-			m->rc = srv_Unlink(m->pinum, m->name);
-			break;
-		case M_Shutdown:
-			sprintf(m->reply, "MFS_Shutdown");
-			srv_Shutdown(rc, sd, s, m);
-			break;
-		default:
-			printf("SERVER:: method does not exist\n");
-			sprintf(m->reply, "Failed");
-			m->rc = -1;
-			break;
-	}
+/* 	switch(m->method){ */
+/* 		case M_Init: */
+/* 			sprintf(m->reply, "MFS_Init"); */
+/* 			m->rc = srv_Init(); */
+/* 			break; */
+/* 		case M_Lookup: */
+/* 			sprintf(m->reply, "MFS_Lookup"); */
+/* 			m->rc = srv_Lookup(m->pinum, m->name); */
+/* 			break; */
+/* 		case M_Stat: */
+/* 			sprintf(m->reply, "MFS_Stat"); */
+/* 			m->rc = srv_Stat(m->inum, &(m->mfs_stat)); */
+/* 			// printf ("Got file size %d\n", m->mfs_stat.size); */
+/* 			break; */
+/* 		case M_Write: */
+/* 			sprintf(m->reply, "MFS_Write"); */
+/* 			m->rc = srv_Write(m->inum, m->buffer, m->block); */
+/* 			break; */
+/* 		case M_Read: */
+/* 			sprintf(m->reply, "MFS_Read"); */
+/* 			m->rc = srv_Read(m->inum, m->buffer, m->block); */
+/*             // printf ("Got buffer as %s\n",m->buffer); */
+/* 			break; */
+/* 		case M_Creat: */
+/* 			sprintf(m->reply, "MFS_Creat"); */
+/* 			m->rc = srv_Creat(m->pinum, m->type, m->name); */
+/* 			break; */
+/* 		case M_Unlink: */
+/* 			sprintf(m->reply, "MFS_Unlink"); */
+/* 			m->rc = srv_Unlink(m->pinum, m->name); */
+/* 			break; */
+/* 		case M_Shutdown: */
+/* 			sprintf(m->reply, "MFS_Shutdown"); */
+/* 			srv_Shutdown(rc, sd, s, m); */
+/* 			break; */
+/* 		default: */
+/* 			printf("SERVER:: method does not exist\n"); */
+/* 			sprintf(m->reply, "Failed"); */
+/* 			m->rc = -1; */
+/* 			break; */
+/* 	} */
 
-	// printf("reply: %s\n", m->reply);
-	return UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r));
-}
+/* 	// printf("reply: %s\n", m->reply); */
+/* 	return UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r)); */
+/* } */
 
-void start_server(int argc, char *argv[]){
-	int sd, port;
+/* void start_server(int argc, char *argv[]){ */
+/* 	int sd, port; */
 
-	getargs(&port, argc, argv);
-	sd = UDP_Open(port);
-	assert(sd > -1);
+/* 	getargs(&port, argc, argv); */
+/* 	sd = UDP_Open(port); */
+/* 	assert(sd > -1); */
 
-	// printf("SERVER:: waiting in loop\n");
-	while (1) {
-		struct sockaddr_in s;
-		struct msg_r m;
-		int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
+/* 	// printf("SERVER:: waiting in loop\n"); */
+/* 	while (1) { */
+/* 		struct sockaddr_in s; */
+/* 		struct msg_r m; */
+/* 		int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r)); */
 
-		if (rc > 0) {
-			rc = call_rpc_func(rc, sd, s, &m);
-		}
-	}
-}
+/* 		if (rc > 0) { */
+/* 			rc = call_rpc_func(rc, sd, s, &m); */
+/* 		} */
+/* 	} */
+/* } */
 
 // Mimic brandon's big-dir test -- 
 void BigDirTest(){
@@ -1211,7 +1213,10 @@ void BigDirTest(){
 	// Create 896 files
 	for(i = 0; i < MAX_FILES_PER_DIR; ++i){
 		sprintf(fname, "%d", i);
-		srv_Creat(inum, MFS_REGULAR_FILE, fname);
+		
+        if (srv_Creat(inum, MFS_REGULAR_FILE, fname) < 0) {
+          break;
+        }
 	}
 
 	// Lookup 896 files
@@ -1257,10 +1262,10 @@ void OhtherTest(){
  * E.g. usage: ./server 10000 tempfile
  */
 int main(int argc, char *argv[]){
-    // BigDirTest();
+    BigDirTest();
 	// OhtherTest();
 
-	start_server(argc, argv);
+	/* start_server(argc, argv); */
 
 	return 0;
 }
