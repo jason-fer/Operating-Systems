@@ -550,8 +550,7 @@ int srv_Read(int inum, char *buffer, int block) {
 		return -1;
 	}
 	
-	// Truncate the buffer
-	buffer[4096] = '\0';
+    printf ("SERVER:: got buffer %s.\n", buffer);
 	return 0;
 }
 
@@ -1136,6 +1135,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 		case M_Read:
 			sprintf(m->reply, "MFS_Read");
 			m->rc = srv_Read(m->inum, m->buffer, m->block);
+            printf ("Got buffer as %s\n",m->buffer);
 			break;
 		case M_Creat:
 			sprintf(m->reply, "MFS_Creat");
