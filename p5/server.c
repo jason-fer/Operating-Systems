@@ -164,9 +164,9 @@ int write_dir(Checkpoint_region_t *cr, Idata_t *c, int block, MFS_DirEnt_t *d){
 	}
 	// Update the inode with our new block location
 	c->inode_ptrs[block] = cr->eol_ptr;
+	// printf("cr->eol_ptr / inode block pointer: %d\n", cr->eol_ptr);
 	// Shift the end of log pointer behind the new data...
 	cr->eol_ptr += MFS_BLOCK_SIZE;
-	// printf("cr->eol_ptr / inode block pointer: %d\n", cr->eol_ptr);
 
 	return 0;
 }
@@ -997,6 +997,10 @@ int srv_Creat(int pinum, int type, char *name){
 	assert(rs != -1);
 	// update child end ---->
 
+	// Update the checkpoint region
+	rs = write_cr(&cr, &c);
+	assert(rs != -1);
+
 	if(c.imap_index == p.imap_index){
 		// Sync things up since we will only be writing one imap.... 
 		p.imap_loc = c.imap_loc;
@@ -1009,11 +1013,13 @@ int srv_Creat(int pinum, int type, char *name){
 	rs = write_inode(&cr, &p);
 	assert(rs != -1);
 
-	if(c.imap_index != p.imap_index){
-		// We need to write a second, completely separate imap piece...
-		rs = write_imap(&cr, &p);
-		assert(rs != -1);
+	// If the child & parent are in the same imap piece...
+	if(c.imap_index == p.imap_index){
+		// Update the parent imap piece with the new child inode location
+		p.imap_ptrs[c.inode_index] = c.imap_ptrs[c.inode_index];
 	}
+	rs = write_imap(&cr, &p);
+	assert(rs != -1);
 
 	// Update the checkpoint region
 	rs = write_cr(&cr, &p);
@@ -1413,8 +1419,6 @@ void start_server(int argc, char *argv[]){
  */
 int main(int argc, char *argv[]){
 
-	// srv_Init();
-	
 	// Disable this to test methods without running the server...
 	start_server(argc, argv);
 
@@ -1423,6 +1427,7 @@ int main(int argc, char *argv[]){
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
 	// int inum;
 
+	// srv_Init();
 
 	// dump_log();
 	
@@ -1435,8 +1440,8 @@ int main(int argc, char *argv[]){
 	// int rs = srv_Unlink(0, "dir");
 	// assert(rs >= 0);
 
+	// // // int rs = srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
 	// int rs = srv_Creat(0, MFS_REGULAR_FILE, "awesome!!");
-	// // int rs = srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
 	// assert(rs == 0);
 	// dump_log();
 
