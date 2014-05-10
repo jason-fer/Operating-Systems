@@ -748,7 +748,6 @@ int srv_Read(int inum, char *buffer, int block) {
 		/* } */
 
 		buffer = (char*)returnVal;
-		free(returnVal);
 		return 0;
 	}
 }
