@@ -155,13 +155,13 @@ int MFS_Creat(int pinum, int type, char *name){
  */
 int MFS_Lookup(int pinum, char *name){
   struct msg_r m;
-  m.pinum  = pinum;
-  strcpy(m.name, name);
-  m.method = M_Lookup;
-  m.rc     = -1;
-  m.buffer[0] = '\0';
-  // printf("Client:: sending pinum:%d, name:%s \n", pinum, name);
+  m.pinum       = pinum;
+  m.method      = M_Lookup;
+  m.rc          = -1;
+  m.buffer[0]   = '\0';
   int rc_select = -1;
+  strcpy(m.name, name);
+  // printf("Client:: sending pinum:%d, name:%s \n", pinum, name);
 
   while (rc_select < 0) {
       rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
@@ -233,10 +233,10 @@ int MFS_Stat(int inum, MFS_Stat_t *mfs_stat){
  */
 int MFS_Write(int inum, char *buffer, int block) {
   struct msg_r m;
-  m.method = M_Write;
-  m.inum = inum;
-  m.block = block;
-  m.rc     = -1;
+  m.method  = M_Write;
+  m.inum    = inum;
+  m.block   = block;
+  m.rc      = -1;
   // Efficiently copy one buffer to another
   m.name[0] = '\0';
 
@@ -274,12 +274,11 @@ int MFS_Write(int inum, char *buffer, int block) {
  */
 int MFS_Read(int inum, char *buffer, int block){
   struct msg_r m;
-  m.method = M_Read;
-  m.inum = inum;
-  m.block = block;
-  // Efficiently copy one buffer to another
+  m.method  = M_Read;
+  m.inum    = inum;
+  m.block   = block;
   buffer[0] = '\0';
-  m.rc     = -1;
+  m.rc      = -1;
   m.name[0] = '\0';
 
   // printf("Client:: sending inum:%d, buffer:%s, block:%d \n", inum, buffer, block);
@@ -319,12 +318,12 @@ int MFS_Read(int inum, char *buffer, int block){
  */
 int MFS_Unlink(int pinum, char *name){
   struct msg_r m;
-  m.method = M_Unlink;
-  m.pinum = pinum;
-  strcpy(m.name, name);
+  m.method    = M_Unlink;
+  m.pinum     = pinum;
   m.buffer[0] = '\0';
-  
-  m.rc     = -1;
+  m.rc        = -1;
+
+  strcpy(m.name, name);
   // printf("Client:: sending pinum:%d, name:%s \n", pinum, name);
   int rc_select = -1;
 
@@ -355,9 +354,9 @@ int MFS_Unlink(int pinum, char *name){
  */
 int MFS_Shutdown(){
   struct msg_r m;
-  m.method = M_Shutdown; 
-  m.rc     = -1;
-  m.name[0] = '\0';
+  m.method    = M_Shutdown; 
+  m.rc        = -1;
+  m.name[0]   = '\0';
   m.buffer[0] = '\0';
 
   printf("Client:: sending MFS_Shutdown! \n");
