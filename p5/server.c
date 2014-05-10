@@ -1324,7 +1324,7 @@ int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 	// Notify client we are shutting down; this is the only method completely 
 	// tied to a client call.
 	m->rc = 0;// success!
-	/* rc = UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r));  */
+	rc = UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r));
 	// @todo: we probably need to call fsync (or an equivalent) before exit!
 	fs_Shutdown();
 	// This will never happen....
