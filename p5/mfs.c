@@ -28,23 +28,37 @@ int read_reply(int rc, int sd, struct msg_r *m, char *expected){
   if (rc > 0){
     rc = UDP_Read(sd, &raddr, (char *) m, sizeof(struct msg_r)); // This blocks
     // printf("CLIENT:: read %d bytes (reply: '%s')\n", rc, m->reply);
-    
     // Confirm the reply contained the reply we expected
     if(strcmp(expected, m->reply) == 0){ 
 
-      if (m->rc < 0) {
-        printf ("m->rd = %d\n",m->rc);
-      } else {
-        printf ("Yayyy!\n");
+      // if (m->rc < 0) {
+      //   printf ("m->rd = %d\n",m->rc);
+      // } else {
+      //   printf ("Yayyy!\n");
+      // }
+
+      switch(m->method){
+        case M_Lookup:
+        case M_Stat:
+        case M_Write:
+        case M_Read:
+        case M_Creat:
+        case M_Unlink:
+          return m->rc;
+          break;
+        case M_Init:
+        case M_Shutdown:
+          return 0;
+          break;
       }
-      
+
       return 0;
     } else {
       return -1;
     }
   }
 
-  printf("CLIENT:: TIMED OUT\n");
+  printf("CLIENT:: TIMED OUT on %s\n", expected);
   return -1;
 }
 

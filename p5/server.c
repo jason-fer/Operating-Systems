@@ -1421,6 +1421,7 @@ void fs_Shutdown(){
 int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 	// Notify client we are shutting down; this is the only method completely 
 	// tied to a client call.
+	m->rc = 0;// success!
 	rc = UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r)); 
 	// @todo: we probably need to call fsync (or an equivalent) before exit!
 	fs_Shutdown();
@@ -1434,40 +1435,39 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 	switch(m->method){
 		case M_Init:
 			sprintf(m->reply, "MFS_Init");
-			srv_Init();
+			m->rc = srv_Init();
 			break;
 		case M_Lookup:
 			sprintf(m->reply, "MFS_Lookup");
 			// printf("SERVER:: says I am in lookup case\n");
 			// printf ("SERVER:: side name %s\n",m->name);
-			if (m->name != NULL) {
-				printf ("Looking up with m->pinum %d and m->name %s\n", m->pinum, m->name);
-			} else {
-				printf ("Got NULL\n");
-			}
-
+			// if (m->name != NULL) {
+			// 	printf ("Looking up with m->pinum %d and m->name %s\n", m->pinum, m->name);
+			// } else {
+			// 	printf ("Got NULL\n");
+			// }
 			m->rc = srv_Lookup(m->pinum, m->name);
 			// printf ("In server received rc as = %d\n",m->rc);
 			break;
 		case M_Stat:
 			sprintf(m->reply, "MFS_Stat");
-			srv_Stat(m->inum, &(m->mfs_stat));
+			m->rc = srv_Stat(m->inum, &(m->mfs_stat));
 			break;
 		case M_Write:
 			sprintf(m->reply, "MFS_Write");
-			srv_Write(m->inum, m->buffer, m->block);
+			m->rc = srv_Write(m->inum, m->buffer, m->block);
 			break;
 		case M_Read:
 			sprintf(m->reply, "MFS_Read");
-			srv_Read(m->inum, m->buffer, m->block);
+			m->rc = srv_Read(m->inum, m->buffer, m->block);
 			break;
 		case M_Creat:
 			sprintf(m->reply, "MFS_Creat");
-			srv_Creat(m->pinum, m->type, m->name);
+			m->rc = srv_Creat(m->pinum, m->type, m->name);
 			break;
 		case M_Unlink:
 			sprintf(m->reply, "MFS_Unlink");
-			srv_Unlink(m->pinum, m->name);
+			m->rc = srv_Unlink(m->pinum, m->name);
 			break;
 		case M_Shutdown:
 			sprintf(m->reply, "MFS_Shutdown");
