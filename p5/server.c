@@ -9,7 +9,7 @@ char* filename = NULL;
 // char* filename = "bare.img";
 int* port;
 int fd = 0;
-int did_init = 0;
+/* int did_init = 0; */
 
 int get_inode_location(int inum);
 
@@ -429,8 +429,8 @@ int init_disk(){
 
 int srv_Init() {
 	// printf("SERVER:: you called MFS_Init\n");
-	if(did_init) return 1;
-	did_init = 1;
+	/* if(did_init) return 1; */
+	/* did_init = 1; */
 	fd = open(filename, O_RDWR, S_IRWXU);
 	if (fd < 0) {
 		return init_disk();
@@ -1139,7 +1139,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 		case M_Stat:
 			sprintf(m->reply, "MFS_Stat");
 			m->rc = srv_Stat(m->inum, &(m->mfs_stat));
-			printf ("Got file size %d\n", m->mfs_stat.size);
+			// printf ("Got file size %d\n", m->mfs_stat.size);
 			break;
 		case M_Write:
 			sprintf(m->reply, "MFS_Write");
@@ -1148,7 +1148,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 		case M_Read:
 			sprintf(m->reply, "MFS_Read");
 			m->rc = srv_Read(m->inum, m->buffer, m->block);
-            printf ("Got buffer as %s\n",m->buffer);
+            // printf ("Got buffer as %s\n",m->buffer);
 			break;
 		case M_Creat:
 			sprintf(m->reply, "MFS_Creat");
