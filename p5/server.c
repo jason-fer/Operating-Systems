@@ -770,6 +770,7 @@ int srv_Stat(int inum, MFS_Stat_t *m){
 	}
 	
 	m->size = currInode->size;
+    printf ("SERVER:: In function **STAT** Got file size %d\n", currInode->size);
 	m->type = currInode->type;
 	free(currInode);
 	currInode = NULL;
@@ -1452,6 +1453,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 		case M_Stat:
 			sprintf(m->reply, "MFS_Stat");
 			m->rc = srv_Stat(m->inum, &(m->mfs_stat));
+            printf ("Got file size %d\n", m->mfs_stat.size);
 			break;
 		case M_Write:
 			sprintf(m->reply, "MFS_Write");

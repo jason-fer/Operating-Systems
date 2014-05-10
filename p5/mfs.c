@@ -80,7 +80,7 @@ int MFS_Init(char *hostname, int port){
   m.rc        = -1;
   m.name[0]   = '\0';
   char* castedMsg = (char*)(&m);
-  printf ("SERVER::HERE\n");
+  printf ("Client::Init HERE\n");
   rc = UDP_Write(sd, &saddr, castedMsg, sizeof(struct msg_r));
   // We expect the reply to contain "MFS_Init"
   return read_reply(rc, sd, &m, "MFS_Init");
@@ -141,7 +141,11 @@ int MFS_Stat(int inum, MFS_Stat_t *mfs_stat){
   printf("Client:: sending inum:%d, & mfs_stat \n", inum);
   rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
   // We expect the reply to contain "MFS_Stat"
-  return read_reply(rc, sd, &m, "MFS_Stat");
+  int returnVal = read_reply(rc, sd, &m, "MFS_Stat");
+  mfs_stat->type = m.mfs_stat.type;
+  mfs_stat->size = m.mfs_stat.size;
+
+  return returnVal;
 }
 
 /**
@@ -160,7 +164,7 @@ int MFS_Write(int inum, char *buffer, int block){
   m.name[0] = '\0';
 
   strncat(m.buffer, buffer, 4096 - 1);
-  printf("Client:: sending inum:%d, buffer:%s, block:%d \n", inum, buffer, block);
+  printf("Client::Write sending inum:%d, buffer:%s, block:%d \n", inum, buffer, block);
   rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
   // We expect the reply to contain "MFS_Write"
   return read_reply(rc, sd, &m, "MFS_Write");
