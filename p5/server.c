@@ -9,6 +9,7 @@ char* filename = NULL;
 // char* filename = "bare.img";
 int* port;
 int fd = 0;
+int did_init = 0;
 
 // Checkpoint region (we should never have more than one of these!)
 typedef struct __Checkpoint_region_t {
@@ -414,6 +415,8 @@ int init_disk(){
 
 int srv_Init() {
 	// printf("SERVER:: you called MFS_Init\n");
+	if(did_init) return 1;
+	did_init = 1;
 	fd = open(filename, O_RDWR, S_IRWXU);
 	if (fd < 0) {
 		return init_disk();
