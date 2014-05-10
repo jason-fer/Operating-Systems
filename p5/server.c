@@ -711,43 +711,41 @@ int srv_Read(int inum, char *buffer, int block) {
 		return 0;
 	} else {
 		int count         = 0;
-		int actualEntries = 0;
+		/* int actualEntries = 0; */
 		MFS_DirEnt_t dirEntry;
 
-		while(count != 64) {
-			++count;
-			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
-				continue;
-			}
-				
-			if (dirEntry.inum == -1) {
-				continue;
-			}
-			++actualEntries;
-		}
-			
-		MFS_DirEnt_t* returnVal = malloc(actualEntries*sizeof(actualEntries));
-			
-		count          = 0;
-		int numEntries = 0;
+		MFS_DirEnt_t* returnVal = malloc(64*sizeof(MFS_DirEnt_t));
 
 		while(count != 64) {
-			++count;
-
-			if (numEntries == actualEntries) {
-				break;
-			}
-
 			if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) {
-				continue;
+              returnVal[count].name[0] = '\0';
+              returnVal[count++].inum  = -1;
+              continue;
 			}
-				
-			if (dirEntry.inum == -1) {
-				continue;
-			}
-				
-			returnVal[numEntries++] = dirEntry;
+            returnVal[count++] = dirEntry;
 		}
+			
+			
+		/* count          = 0; */
+		/* int numEntries = 0; */
+
+		/* while(count != 64) { */
+		/* 	++count; */
+
+		/* 	if (numEntries == actualEntries) { */
+		/* 		break; */
+		/* 	} */
+
+		/* 	if (read(fd, &dirEntry, sizeof(MFS_DirEnt_t)) < 0) { */
+		/* 		continue; */
+		/* 	} */
+				
+		/* 	if (dirEntry.inum == -1) { */
+		/* 		continue; */
+		/* 	} */
+				
+		/* 	returnVal[numEntries++] = dirEntry; */
+		/* } */
 
 		buffer = (char*)returnVal;
 		free(returnVal);
