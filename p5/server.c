@@ -166,9 +166,8 @@ int get_next_inode(Checkpoint_region_t *cr){
 	int i;
 	int j;
 	int inum = -1;
-	int is_found = 0;
 	for (i = 0; i < 256; i++){
-		if(is_found) break;
+		if(inum >= 0) break;
 		// Read in the imap piece
 		lseek(fd, cr->ckpr_ptrs[i], SEEK_SET);
 		if(read(fd, &temp.imap_ptrs, sizeof(int) * 16) < 0) { 
@@ -176,19 +175,16 @@ int get_next_inode(Checkpoint_region_t *cr){
 		}
 		// Check each of the 16 pointers in the imap piece
 		for(j = 0; j < 16; j++){
-			inum = (j + (i * 16));
-			// printf("ckpr_ptrs[%d]:%d imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", i, cr->ckpr_ptrs[i],j,temp.imap_ptrs[j], inum, i);
+			int tmp_inum = (j + (i * 16));
+			// printf("ckpr_ptrs[%d]:%d imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", i, cr->ckpr_ptrs[i],j,temp.imap_ptrs[j], tmp_inum, i);
 			// If the checkpoint region location is zero, the inum is free
 			if(temp.imap_ptrs[j] == 0) {
-				is_found = 1;
+				inum = tmp_inum;
 				break;
 			}
 		}
 	}
 
-	if(! is_found) {
-		return -1;
-	}
 	return inum;
 }
 
@@ -296,8 +292,8 @@ int dump_log(){
 			if (read(fd, &curr_inode, sizeof(Inode_t)) < 0) { continue; }
 			// Parent inode numbers can only belong to directories
 			if (curr_inode.type != MFS_DIRECTORY) { // It's a file
-				// printf("inode_loc:%d, file size:%d\n", inode_loc, curr_inode->size);
-				dump_file_inode(fd, inode_loc, curr_inode.size);
+				// printf("inode_loc:%d, file size:%d\n", inode_loc, curr_inode.size);
+				// dump_file_inode(fd, inode_loc, curr_inode.size);
 			} else { // It's a directory
 				dump_dir_inode(fd, inode_loc);
 			}
@@ -684,22 +680,22 @@ int srv_Creat(int pinum, int type, char *name){
 	// Read in the parent imap
 	Idata_t p;
 	rs = read_imap(pinum, &cr, &p);
-	assert(rs != -1);
+	if(rs == -1) return -1;
 
 	// Read in the parent inode
 	rs = read_inode(&cr, &p);
-	assert(rs != -1);
+	if(rs == -1) return -1;
 
 	// Determine the inode to assign
 	int inum = get_next_inode(&cr);
-	assert(inum > 0);
+	if(inum == -1) return -1;
 
 	// Set up our new inode & imap struct
 	Idata_t c;
 
 	// Read in the imap for the new item
 	rs = read_imap(inum, &cr, &c);
-	assert(rs != -1);
+	if(rs == -1) return -1;
 
 	// Set the inode data
 	c.curr_inode.type = type;
@@ -1179,17 +1175,37 @@ void start_server(int argc, char *argv[]){
 	}
 }
 
-/**
- * E.g. usage: ./server 10000 tempfile
- */
-int main(int argc, char *argv[]){
+// Mimic brandon's big-dir test -- 
+void BigDirTest(){
+	filename = "new.img";
+	srv_Init();
+	// Checkpoint_region_t cr;
+	// int rs = read_cr(&cr);
+	// int inum = get_next_inode(&cr);
+	// printf("the next inum: %d\n", inum);
+	int rs = srv_Creat(0, MFS_DIRECTORY, "testdir");
+	int inum = srv_Lookup(0, "testdir");
+	int i;
+	int MAX_FILES_PER_DIR = 14 * 64;
+	// int MAX_FILES_PER_DIR = 16;
+	char fname[20];
 
-	// Disable this to test methods without running the server...
-	start_server(argc, argv);
+	// Create 896 files
+	for(i = 0; i <= MAX_FILES_PER_DIR; ++i){
+		sprintf(fname, "%d", i);
+		srv_Creat(inum, MFS_REGULAR_FILE, fname);
+	}
+	// Lookup 896 files
+	for(i = 0; i <= MAX_FILES_PER_DIR; ++i){
+		sprintf(fname, "%d", i);
+		srv_Lookup(inum, fname);
+	}
 
-	// filename = "new.img";
-	// srv_Init();
-	// int rs = srv_Creat(0, MFS_REGULAR_FILE, "test");
+	dump_log();
+	exit(0);
+}
+
+void OhtherTest(){
 	// assert(rs == 0);
 	// rs = srv_Write(1, "START BLOCK 1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        END BLOCK 1", 0);
 	// int len = strlen("START BLOCK 1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        END BLOCK 1");
@@ -1216,5 +1232,16 @@ int main(int argc, char *argv[]){
 	//   printf("%s\n", buffer);
 	//   free(buffer);
 	// }
+}
+
+/**
+ * E.g. usage: ./server 10000 tempfile
+ */
+int main(int argc, char *argv[]){
+	// BigDirTest();
+	// OhtherTest();
+
+	start_server(argc, argv);
+
 	return 0;
 }
