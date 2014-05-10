@@ -94,7 +94,7 @@ int MFS_Init(char *hostname, int port){
  */
 int MFS_Creat(int pinum, int type, char *name){
   struct msg_r m;
-  printf("Client:: sending pinum:%d, type:%d, name:%s \n", pinum, type, name);
+  // printf("Client:: sending pinum:%d, type:%d, name:%s \n", pinum, type, name);
   m.method = M_Creat;
   m.pinum = pinum;
   m.type = type;
@@ -117,11 +117,11 @@ int MFS_Lookup(int pinum, char *name){
   strcpy(m.name, name);
   m.method = M_Lookup;
   m.rc     = -1;
-  printf("Client:: sending pinum:%d, name:%s \n", pinum, name);
+  // printf("Client:: sending pinum:%d, name:%s \n", pinum, name);
   rc = UDP_Write(sd, &saddr, (char *)&m, sizeof(m));
   // We expect the reply to contain "MFS_Lookup"
   read_reply(rc, sd, &m, "MFS_Lookup");
-  printf ("m.name = %s\n", m.name);
+  // printf ("m.name = %s\n", m.name);
   return m.rc;
 }
 
@@ -138,7 +138,7 @@ int MFS_Stat(int inum, MFS_Stat_t *mfs_stat){
   m.method = M_Stat;
   m.rc     = -1;
   m.name[0] = '\0';
-  printf("Client:: sending inum:%d, & mfs_stat \n", inum);
+  // printf("Client:: sending inum:%d, & mfs_stat \n", inum);
   rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
   // We expect the reply to contain "MFS_Stat"
   int returnVal = read_reply(rc, sd, &m, "MFS_Stat");
@@ -163,10 +163,11 @@ int MFS_Write(int inum, char *buffer, int block){
   m.buffer[0] = '\0';
   m.name[0] = '\0';
 
-  strncat(m.buffer, buffer, 4096 - 1);
-  printf("Client::Write sending inum:%d, buffer:%s, block:%d \n", inum, buffer, block);
+  strncat(m.buffer, buffer, strlen(buffer) + 1);
+  printf("Client:: sending inum:%d, buffer:%s, block:%d \n", inum, buffer, block);
   rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
   // We expect the reply to contain "MFS_Write"
+  // printf("m.buffer contains: \n%s\n", m.buffer);
   return read_reply(rc, sd, &m, "MFS_Write");
 } 
 
@@ -182,14 +183,22 @@ int MFS_Read(int inum, char *buffer, int block){
   m.inum = inum;
   m.block = block;
   // Efficiently copy one buffer to another
-  m.buffer[0] = '\0';
+  // buffer[0] = '\0';
   m.rc     = -1;
   m.name[0] = '\0';
 
-  strncat(m.buffer, buffer, 4096 - 1);
+  // int i = 0;
+  // for(; i < 4096; ++i){
+  //  buffer[i] = 0;
+  // }
+
   printf("Client:: sending inum:%d, buffer:%s, block:%d \n", inum, buffer, block);
   rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
   // We expect the reply to contain "MFS_Read"
+  strcpy(buffer,m.buffer);
+  // strncat(buffer, m.buffer, 4096 - 1);
+  // printf("m.buffer contains: \n%s\n", m.buffer);
+  // printf("buffer contains: \n%s\n", buffer);
   return read_reply(rc, sd, &m, "MFS_Read");
 }
 
@@ -207,7 +216,7 @@ int MFS_Unlink(int pinum, char *name){
   strcpy(m.name, name);
 
   m.rc     = -1;
-  printf("Client:: sending pinum:%d, name:%s \n", pinum, name);
+  // printf("Client:: sending pinum:%d, name:%s \n", pinum, name);
   rc = UDP_Write(sd, &saddr, (char *) &m, sizeof(struct msg_r));
   // We expect the reply to contain "MFS_Read"
   return read_reply(rc, sd, &m, "MFS_Unlink");
