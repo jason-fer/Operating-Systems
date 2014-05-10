@@ -707,7 +707,8 @@ int srv_Read(int inum, char *buffer, int block) {
 		if (read(fd, buffer, MFS_BLOCK_SIZE) < 0) {
 			return -1;
 		}
-			
+        
+        buffer[4096] = '\0';
 		return 0;
 	} else {
 		int count         = 0;
@@ -813,7 +814,7 @@ int srv_Write(int inum, char *buffer, int block){
 	}
 	
 	// Add the new buffer to the total file size
-	int file_size = 0;
+	int file_size = 4096;
 	int i = 0;
 	for (; i < 14; i++){
 		// This is the block we are replacing; ignore it.
@@ -1323,7 +1324,7 @@ int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 	// Notify client we are shutting down; this is the only method completely 
 	// tied to a client call.
 	m->rc = 0;// success!
-	rc = UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r)); 
+	/* rc = UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r));  */
 	// @todo: we probably need to call fsync (or an equivalent) before exit!
 	fs_Shutdown();
 	// This will never happen....
@@ -1383,21 +1384,21 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 	}
 
 	// printf("reply: %s\n", m->reply);
-	return UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r)); 
+	return UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r));
 }
 
 void start_server(int argc, char *argv[]){
-	int sd, port; 
+	int sd, port;
 
-	getargs(&port, argc, argv); 
-	sd = UDP_Open(port); 
+	getargs(&port, argc, argv);
+	sd = UDP_Open(port);
 	assert(sd > -1);
 
 	// printf("SERVER:: waiting in loop\n");
 
-	while (1) { 
-		struct sockaddr_in s; 
-		struct msg_r m; 
+	while (1) {
+		struct sockaddr_in s;
+		struct msg_r m;
 		int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
 		// printf ("SERVER::m.rc = %d\n", m.rc);
 		// printf ("SERVER::m.name = %s\n",m.name);
@@ -1405,7 +1406,7 @@ void start_server(int argc, char *argv[]){
 			rc = call_rpc_func(rc, sd, s, &m);
 			// printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
 		}
-	} 
+	}
 }
 
 /**
@@ -1430,7 +1431,7 @@ int main(int argc, char *argv[]){
 	// int len = strlen("START BLOCK 1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        END BLOCK 1");
 	// printf("length of string: %d\n", len);
 	// assert(rs == 0);
-	// char buffer[MFS_BLOCK_SIZE];
+	// char buffer[MFS_BLOCK_SIZE+1];
 	// rs = srv_Read(1, (char*) &buffer, 0);
 	// assert(rs == 0);
 	// printf("buffer: %s\n", buffer);
