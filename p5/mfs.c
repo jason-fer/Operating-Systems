@@ -31,11 +31,13 @@ int read_reply(int rc, int sd, struct msg_r *m, char *expected){
     
     // Confirm the reply contained the reply we expected
     if(strcmp(expected, m->reply) == 0){ 
+
       if (m->rc < 0) {
-        printf ("rc = %d\n",m->rc);
+        printf ("m->rd = %d\n",m->rc);
       } else {
         printf ("Yayyy!\n");
       }
+      
       return 0;
     } else {
       return -1;

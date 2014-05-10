@@ -955,10 +955,23 @@ int srv_Creat(int pinum, int type, char *name){
 	// printf("SERVER:: you called MFS_Creat\n");
 	int i,j;
 
+	// Make sure the name is not too long
+	int len = strlen(name);
+	if(len > 59){
+		return -1;
+	}
+
+	// Success if the name already exists
 	int rs = srv_Lookup(pinum, name);
 	if (rs == 0) {
-		// Success if the name already exists
 		return 0;
+	}
+
+	// The parent must be a dir
+	MFS_Stat_t pstat;
+	srv_Stat(pinum, &pstat);
+	if(pstat.type != MFS_DIRECTORY){
+		return -1;
 	}
 
 	// Read in the checkpoint region
@@ -1050,11 +1063,11 @@ int srv_Creat(int pinum, int type, char *name){
 		MFS_DirEnt_t new_dir[64];
 		new_dir[0].name[0] = '.';
 		new_dir[0].name[1] = '\0';
-		new_dir[0].inum    = 0;
+		new_dir[0].inum    = inum;
 		new_dir[1].name[0] = '.';
 		new_dir[1].name[1] = '.';
 		new_dir[1].name[2] = '\0';
-		new_dir[1].inum    = 0;
+		new_dir[1].inum    = pinum;
 
 		int i = 2;
 		for (; i < 64; i++) {
@@ -1463,6 +1476,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 		default:
 			printf("SERVER:: method does not exist\n");
 			sprintf(m->reply, "Failed");
+			// m->rc = -1;
 			break;
 	}
 
@@ -1498,17 +1512,17 @@ void start_server(int argc, char *argv[]){
 int main(int argc, char *argv[]){
 
 	// Disable this to test methods without running the server...
-	// start_server(argc, argv);
+	start_server(argc, argv);
 
 	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
 	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
 	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
 	// int inum;
 
-	filename = "new.img";
-	srv_Init();
+	// filename = "new.img";
+	// srv_Init();
 
-	dump_log();
+	// dump_log();
 	
 	// srv_Lookup(0, ".");
 	// char buffer[MFS_BLOCK_SIZE];
