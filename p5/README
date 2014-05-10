@@ -7,3 +7,11 @@
 | Section: LEC 001
 | Professor: Daniel Scott Myers
 +-------------------------------------------------------------------------------
+
+Tests:
+build shutdown creat write stat overwrite maxfile maxfile2 sparse stat2 dir1 dir2 baddir baddir2 unlink unlink2 empty name persist drop bigdir bigdir2 deep complex complex2 
+
+persist2 <-- SLOW!!!!!!
+
+e.g. run all fast tests:
+~bdavis/public/cs537/tests/5a/runtests build shutdown creat write stat overwrite maxfile maxfile2 sparse stat2 dir1 dir2 baddir baddir2 unlink unlink2 empty name persist drop bigdir bigdir2 deep complex complex2 -c
