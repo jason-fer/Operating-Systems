@@ -11,6 +11,8 @@ int* port;
 int fd = 0;
 int did_init = 0;
 
+int get_inode_location(int inum);
+
 // Checkpoint region (we should never have more than one of these!)
 typedef struct __Checkpoint_region_t {
 	int eol_ptr; // End of Log pointer
@@ -161,31 +163,45 @@ int write_file(Checkpoint_region_t *cr, Idata_t *c, int block, char *d){
 
 // Requires read_cr first!
 int get_next_inode(Checkpoint_region_t *cr){
-	// Loop through the 256 checkpoint region pointers
-	Idata_t temp;
-	int i;
-	int j;
-	int inum = -1;
-	for (i = 0; i < 256; i++){
-		if(inum >= 0) break;
-		// Read in the imap piece
-		lseek(fd, cr->ckpr_ptrs[i], SEEK_SET);
-		if(read(fd, &temp.imap_ptrs, sizeof(int) * 16) < 0) { 
-			return -1; 
-		}
-		// Check each of the 16 pointers in the imap piece
-		for(j = 0; j < 16; j++){
-			int tmp_inum = (j + (i * 16));
-			// printf("ckpr_ptrs[%d]:%d imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", i, cr->ckpr_ptrs[i],j,temp.imap_ptrs[j], tmp_inum, i);
-			// If the checkpoint region location is zero, the inum is free
-			if(temp.imap_ptrs[j] == 0) {
-				inum = tmp_inum;
-				break;
-			}
-		}
-	}
+  /* // Loop through the 256 checkpoint region pointers */
+  /*   Idata_t temp; */
+  /*   int i; */
+  /*   int j; */
+  /*   int inum = -1; */
+  /*   for (i = 0; i < 256; i++){ */
+  /*   	if(inum >= 0) break; */
+  /*   	// Read in the imap piece */
+  /*   	lseek(fd, cr->ckpr_ptrs[i], SEEK_SET); */
+  /*   	if(read(fd, &temp.imap_ptrs, sizeof(int) * 16) < 0) {  */
+  /*   		return -1;  */
+  /*   	} */
+  /*   	// Check each of the 16 pointers in the imap piece */
+  /*   	for(j = 0; j < 16; j++){ */
+  /*   		int tmp_inum = (j + (i * 16)); */
+  /*   		// printf("ckpr_ptrs[%d]:%d imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", i, cr->ckpr_ptrs[i],j,temp.imap_ptrs[j], tmp_inum, i); */
+  /*   		// If the checkpoint region location is zero, the inum is free */
+  /*   		if(temp.imap_ptrs[j] == 0) { */
+  /*   			inum = tmp_inum; */
+  /*   			break; */
+  /*   		} */
+  /*   	} */
+  /*   } */
 
-	return inum;
+  /*   return inum; */
+
+  int i = 0;
+  for(; i < 4096; ++i) {
+    int iNodeLoc = get_inode_location(i);
+    if (iNodeLoc < 0) {
+      return i;
+    } 
+    
+    if (iNodeLoc == cr->eol_ptr) {
+      return i;
+    }
+  }
+
+  return -1;
 }
 
 // Dump contents of the current file
@@ -332,13 +348,15 @@ int get_inode_location(int inum) {
 	// Read in the imap
 	Idata_t c;
 	rs = read_imap(inum, &cr, &c);
-	if(c.inode_loc <= 0 || rs == -1) return -1;
+	if(c.inode_loc <= 0 || rs == -1) {
+      return -1;
+    }
 
 	return c.inode_loc;
 }
 
 int init_disk(){
-	int i, j, inum, rs;
+	int i, j, rs;
 	fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
 	if (fd < 0) {
 	   printf("Open error\n");
@@ -486,8 +504,8 @@ int srv_Lookup(int pinum, char *name) {
 			if (dirEntry.inum == -1) {
 				continue;
 			}
-			// printf ("dirEntry.inum %d\n", dirEntry.inum);
-			// printf ("dirEntry.name %s\n", dirEntry.name);
+			/* printf ("dirEntry.inum %d\n", dirEntry.inum); */
+			/* printf ("dirEntry.name %s\n", dirEntry.name); */
 			if (strcmp(dirEntry.name, name) == 0) {
 				return dirEntry.inum;
 			}
@@ -546,7 +564,6 @@ int srv_Read(int inum, char *buffer, int block) {
 		return -1;
 	}
 	
-    printf ("SERVER:: got buffer %s.\n", buffer);
 	return 0;
 }
 
@@ -1099,7 +1116,7 @@ void fs_Shutdown(){
  * purposes.
  */
 int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
-	// Notify client we are shutting down; this is the only method completely 
+	// Notify client we are shutting down; this is the only method completely
 	// tied to a client call.
 	rc = UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r));
 	fs_Shutdown();
@@ -1183,20 +1200,22 @@ void BigDirTest(){
 	// int rs = read_cr(&cr);
 	// int inum = get_next_inode(&cr);
 	// printf("the next inum: %d\n", inum);
-	int rs = srv_Creat(0, MFS_DIRECTORY, "testdir");
+    srv_Creat(0, MFS_DIRECTORY, "testdir");
 	int inum = srv_Lookup(0, "testdir");
+    printf ("testdir has inum %d\n",inum);
 	int i;
 	int MAX_FILES_PER_DIR = 14 * 64;
 	// int MAX_FILES_PER_DIR = 16;
 	char fname[20];
 
 	// Create 896 files
-	for(i = 0; i <= MAX_FILES_PER_DIR; ++i){
+	for(i = 0; i < MAX_FILES_PER_DIR; ++i){
 		sprintf(fname, "%d", i);
 		srv_Creat(inum, MFS_REGULAR_FILE, fname);
 	}
+
 	// Lookup 896 files
-	for(i = 0; i <= MAX_FILES_PER_DIR; ++i){
+	for(i = 0; i < MAX_FILES_PER_DIR; ++i){
 		sprintf(fname, "%d", i);
 		srv_Lookup(inum, fname);
 	}
@@ -1238,7 +1257,7 @@ void OhtherTest(){
  * E.g. usage: ./server 10000 tempfile
  */
 int main(int argc, char *argv[]){
-	// BigDirTest();
+    // BigDirTest();
 	// OhtherTest();
 
 	start_server(argc, argv);
