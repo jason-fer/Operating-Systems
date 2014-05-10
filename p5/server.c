@@ -34,11 +34,9 @@ int read_cr(Checkpoint_region_t *cr){
 	if(read(fd, &cr->eol_ptr, sizeof(int)) < 0) { 
 		return -1; 
 	}
-
 	if(read(fd, &cr->ckpr_ptrs, sizeof(int) * 256) < 0) { 
 		return -1; 
 	}
-
 	return 0;
 }
 
@@ -53,7 +51,6 @@ int read_imap(int inum, Checkpoint_region_t *cr, Idata_t *c){
 	if(read(fd, &c->imap_ptrs, sizeof(int) * 16) < 0) {
 		return -1; 
 	}
-
 	// Get position of inode
 	c->inode_loc = c->imap_ptrs[c->inode_index];
 	// This breaks stuff if this is an imap for a NEW inodet that doesn't exist yet.
@@ -86,8 +83,6 @@ int write_cr(Checkpoint_region_t *cr, Idata_t *c){
 		return -1; 
 	} // We are now done with the child.
 
-	// printf("CR Region update: c->imap_loc: %d\n", c->imap_loc);
-
 	// Update the EOL pointer
 	lseek(fd, 0, SEEK_SET);
 	if (write(fd, &cr->eol_ptr, sizeof(int)) < 0) { 
@@ -103,9 +98,9 @@ int write_imap(Checkpoint_region_t *cr, Idata_t *c){
 	if(write(fd, &c->imap_ptrs, sizeof(int) * 16) < 0) { 
 		return -1; 
 	}
+
 	// Our new imap piece loc which we will put in the checkpoint region
 	c->imap_loc = cr->eol_ptr;
-	// printf("cr->eol_ptr / c->imap_loc: %d\n", cr->eol_ptr);
 	cr->eol_ptr += (sizeof(int) * 16); // Size of imap
 	return 0;
 }
@@ -124,9 +119,7 @@ int write_inode(Checkpoint_region_t *cr, Idata_t *c){
 
 	// Update our imap & EOL
 	c->imap_ptrs[c->inode_index] = cr->eol_ptr;
-	// printf("c->imap_ptrs[c->inode_index] / imap_ptr: %d\n", cr->eol_ptr);
 	cr->eol_ptr += (sizeof(Inode_t) + (sizeof(int) * 14)); // Size of inode + ptrs
-
 	return 0;
 }
 
@@ -135,10 +128,12 @@ int write_dir(Checkpoint_region_t *cr, Idata_t *c, int block, MFS_DirEnt_t *d){
 	if(block < 0 || block > 13){
 		return -1;
 	}
+
 	lseek(fd, cr->eol_ptr, SEEK_SET);
 	if(write(fd, d, MFS_BLOCK_SIZE) < 0) { 
 		return -1; 
 	}
+
 	// Update the inode with our new block location
 	c->inode_ptrs[block] = cr->eol_ptr;
 	// Shift the end of log pointer behind the new data...
@@ -151,18 +146,20 @@ int write_file(Checkpoint_region_t *cr, Idata_t *c, int block, char *d){
 	if(block < 0 || block > 13){
 		return -1;
 	}
+
 	lseek(fd, cr->eol_ptr, SEEK_SET);
 	if(write(fd, d, MFS_BLOCK_SIZE) < 0) { 
 		return -1; 
 	}
+
 	c->inode_ptrs[block] = cr->eol_ptr;
 	cr->eol_ptr += MFS_BLOCK_SIZE;
+
 	return 0;
 }
 
 // Requires read_cr first!
 int get_next_inode(Checkpoint_region_t *cr){
-
 	// Loop through the 256 checkpoint region pointers
 	Idata_t temp;
 	int i;
@@ -330,222 +327,96 @@ void getargs(int *port, int argc, char *argv[]){
  * Use the checkpoint region & imap piece to find & return the inode location
  */
 int get_inode_location(int inum) {
-	// Ignore invalid inode numbers
-	if (inum < 0 || inum >= MFS_BLOCK_SIZE) {
-		return -1;
-	}
+	// Read in the checkpoint region
+	Checkpoint_region_t cr;
+	int rs = read_cr(&cr);
+	if(rs == -1) return -1;
 
-	// Set pointer at the front of the file
-	lseek(fd, 0, SEEK_SET);
+	// Read in the imap
+	Idata_t c;
+	rs = read_imap(inum, &cr, &c);
+	if(c.inode_loc <= 0 || rs == -1) return -1;
 
-	// Read result into the address of the checkPointVal
-	int checkPointVal = 0;
-	int rc = read(fd, &checkPointVal, sizeof(int));
-	if (rc < 0) {
-		return -1;
-	}
-
-	// There are 256 imaps, each with 16 inodes references (4096 total inodes)
-	int imapPieceIdx = inum / 16;
-	// +4 because the first checkpoint region entry points to the end of the log
-	// *4 because each imap ref is 4 a byte int
-	lseek(fd, (imapPieceIdx * 4) + 4, SEEK_SET);
-
-	// Now we read from the checkpoint region to find where the imap piece is
-	int locationToPiece = 0;
-	if (read(fd, &locationToPiece, 4) < 0) {
-		return -1;
-	}
-
-	// We found our imap piece; now use modulus to find one of 16 inode refs
-	int iNodeMapIdx = inum % 16;
-	// Each imapIdx is of 4 bytes, so multiplying by 4
-	lseek(fd, locationToPiece + (iNodeMapIdx * 4), SEEK_SET);
-	
-	// Now read from the imap piece to find the inode ref
-	int location = 0;
-	rc = read(fd, &location, sizeof(int));
-	if (rc < 0) {
-		return -1;
-	}
-	if (location > checkPointVal) {
-		return -1;
-	}
-	return location;
+	return c.inode_loc;
 }
 
-// int init_disk(){
-//  int i, j, inum, rs;
-//  fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
-//  if (fd < 0) {
-//      printf("Open error\n");
-//      exit(1);
-//  }
-
-//  Checkpoint_region_t cr;
-//  // Set EOL just past the CR
-//  cr.eol_ptr = (4 + 256*sizeof(int));
-//  // init CR to zero
-//  i = 0;
-//  for (; i < 256; ++i) {
-//      cr.ckpr_ptrs[i] = 0;
-//  }
-
-//  Idata_t c;
-//  c.imap_index = 0;
-//  c.imap_loc = (4 + 256*4 + 4096 + sizeof(Inode_t) + 14*sizeof(int));
-//  c.inode_index = 0;
-
-//  // Set up imap
-//  i = 0;
-//  for (; i < 16; i++) {
-//      c.imap_ptrs[i] = 0;
-//  }
-
-//  // Set up inode
-//  c.curr_inode.type = MFS_DIRECTORY;
-//  c.curr_inode.size = 4096;
-//  // Set the other inode block pointers to zero
-//  i = 0;
-//  for (; i < 14; i++) {
-//      c.inode_ptrs[i] = 0;
-//  }
-
-//  // Set up directory entries
-//  MFS_DirEnt_t dir_entries[64];
-//  j = 0;
-//  for (; i < 64; i++) {
-//      dir_entries[i].name[0] = '\0';
-//      dir_entries[i].inum    = -1;
-//  }
-
-//  dir_entries[0].name[0] = '.';
-//  dir_entries[0].name[1] = '\0';
-//  dir_entries[0].inum    = 0;
-//  dir_entries[1].name[0] = '.';
-//  dir_entries[1].name[1] = '.';
-//  dir_entries[1].name[2] = '\0';
-//  dir_entries[1].inum    = 0;
-
-//  rs = write_dir(&cr, &c, 0, &dir_entries[0]);
-//  assert(rs != -1);
-
-//  // Write the new & empty inode
-//  rs = write_inode(&cr, &c);
-//  assert(rs != -1);
-
-//  // Write the imap
-//  rs = write_imap(&cr, &c);
-//  assert(rs != -1);
-//  // update child end ---->
-
-//  // Update the checkpoint region
-//  rs = write_cr(&cr, &c);
-//  assert(rs != -1);
-
-//  return 0;
-// }
-
-int initDisk() {
+int init_disk(){
+	int i, j, inum, rs;
 	fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
 	if (fd < 0) {
-		printf("Open error\n");
-		exit(1);
+	   printf("Open error\n");
+	   exit(1);
 	}
 
-	lseek(fd, 0, SEEK_SET);
-	int eol = (4 + 256*4 + 4096 + sizeof(Inode_t) + 14*sizeof(int) + 16*sizeof(int));
-	if (write(fd, &eol, sizeof(int)) < 0) {
-		return -1;
-	}
-	
-	int imapPieceIdxArr[256];
-	imapPieceIdxArr[0] = (4 + 256*4 + 4096 + sizeof(Inode_t) + 14*sizeof(int));
-
-	int j = 1;
-	for (; j < 256; ++j) {
-		imapPieceIdxArr[j] = 0;
+	Checkpoint_region_t cr;
+	// Set EOL just past the CR
+	cr.eol_ptr = (4 + 256*sizeof(int));
+	// init CR to zero
+	i = 0;
+	for (; i < 256; ++i) {
+	   cr.ckpr_ptrs[i] = 0;
 	}
 
-	if (write(fd, &imapPieceIdxArr, 256*sizeof(int)) < 0) {
-		return -1;
+	Idata_t c;
+	c.imap_index = 0;
+	c.imap_loc = (4 + 256*4 + 4096 + sizeof(Inode_t) + 14*sizeof(int));
+	c.inode_index = 0;
+
+	// Set up imap
+	i = 0;
+	for (; i < 16; i++) {
+	   c.imap_ptrs[i] = 0;
 	}
 
-	lseek(fd, 257*sizeof(int),SEEK_SET);
+	// Set up inode
+	c.curr_inode.type = MFS_DIRECTORY;
+	c.curr_inode.size = 4096;
+	// Set the other inode block pointers to zero
+	i = 0;
+	for (; i < 14; i++) {
+	   c.inode_ptrs[i] = 0;
+	}
 
-	MFS_DirEnt_t dirEntries[64];
-	
-	dirEntries[0].name[0] = '.';
-	dirEntries[0].name[1] = '\0';
-	dirEntries[0].inum    = 0;
-
-	dirEntries[1].name[0] = '.';
-	dirEntries[1].name[1] = '.';
-	dirEntries[1].name[2] = '\0';
-	dirEntries[1].inum    = 0;
-
-	int i = 2;
+	// Set up directory entries
+	MFS_DirEnt_t dir_entries[64];
+	j = 0;
 	for (; i < 64; i++) {
-		dirEntries[i].name[0] = '\0';
-		dirEntries[i].inum    = -1;
+	   dir_entries[i].name[0] = '\0';
+	   dir_entries[i].inum    = -1;
 	}
 
-	if (write(fd, &dirEntries, 64*sizeof(MFS_DirEnt_t)) < 0) {
-		return -1;
-	}
+	dir_entries[0].name[0] = '.';
+	dir_entries[0].name[1] = '\0';
+	dir_entries[0].inum    = 0;
+	dir_entries[1].name[0] = '.';
+	dir_entries[1].name[1] = '.';
+	dir_entries[1].name[2] = '\0';
+	dir_entries[1].inum    = 0;
 
-	Inode_t curr_inode;
-	curr_inode.size = 4096;
-	curr_inode.type = MFS_DIRECTORY;
+	rs = write_dir(&cr, &c, 0, &dir_entries[0]);
+	assert(rs != -1);
 
-	if (write(fd, &curr_inode, sizeof(Inode_t)) < 0) {
-		return -1;
-	}
-	
-	int inode_ptrs[14];
-	
-	inode_ptrs[0] = 257*4;
-	inode_ptrs[1] = 257*4;
-	
-	i = 2;
-	for (; i < 14; ++i) {
-		inode_ptrs[i] = 0;
-	}
+	// Write the new & empty inode
+	rs = write_inode(&cr, &c);
+	assert(rs != -1);
 
-	if (write(fd, &inode_ptrs, sizeof(int)*14) < 0) {
-		return -1;
-	}
+	// Write the imap
+	rs = write_imap(&cr, &c);
+	assert(rs != -1);
+	// update child end ---->
 
-	int imapPiece = (4 + 256*4 + 4096);
-	if (write(fd, &imapPiece, sizeof(int)) < 0) {
-		return -1;
-	}
-	
-	i = 1;
-	int zero = 0;
-	for (; i < 16; ++i) {
-		if (write(fd, &zero, sizeof(int)) < 0) {
-			return -1;
-		}
-	}
-
-	fsync(fd);
-
-	// Checkpoint_region_t cr;
-	// int rs = read_cr(&cr);
-	// i = 0;
-	// for (; i < 256; ++i) {
-	//  printf("CHECKPOINT PTR[%d]%d\n", i, cr.ckpr_ptrs[i]);
-	// }
+	// Update the checkpoint region
+	rs = write_cr(&cr, &c);
+	assert(rs != -1);
 
 	return 0;
 }
- 
+
 int srv_Init() {
 	// printf("SERVER:: you called MFS_Init\n");
 	fd = open(filename, O_RDWR, S_IRWXU);
 	if (fd < 0) {
-		return initDisk();
+		return init_disk();
 	}
 	return 0;
 }
@@ -678,7 +549,6 @@ int srv_Read(int inum, char *buffer, int block) {
 	
 	// Truncate the buffer
 	buffer[4096] = '\0';
-
 	return 0;
 }
 
@@ -689,26 +559,21 @@ int srv_Read(int inum, char *buffer, int block) {
  */
 int srv_Stat(int inum, MFS_Stat_t *m){
 	// printf("SERVER:: you called MFS_Stat\n");
-	int location = get_inode_location(inum);
-	if (location < 0) {
-		return -1;
-	}
 
-	Inode_t* currInode = malloc(sizeof(Inode_t));
+	Checkpoint_region_t cr;
+	int rs = read_cr(&cr);
+	if(rs == -1) return -1;
 
-	lseek(fd, location, SEEK_SET);
+	Idata_t c;
+	rs = read_imap(inum, &cr, &c);
+	if(c.inode_loc <= 0 || rs == -1) return -1;
 
-	if (read(fd, currInode, sizeof(Inode_t)) < 0) {
-		free(currInode);
-		currInode = NULL;
-		return -1;
-	}
-	
-	m->size = currInode->size;
-  // printf ("SERVER:: In function **STAT** Got file size %d\n", currInode->size);
-	m->type = currInode->type;
-	free(currInode);
-	currInode = NULL;
+	rs = read_inode(&cr, &c);
+	if(rs == -1) return -1;
+
+	m->size = c.curr_inode.size;
+	m->type = c.curr_inode.type;
+
 	return 0;
 }
 
@@ -760,7 +625,7 @@ int srv_Write(int inum, char *buffer, int block){
 	assert(c.curr_inode.size >= 0 && c.curr_inode.size <= MFS_BLOCK_SIZE * 14);
 	// printf("new size: %d\n", curr_inode->size);
 
-	rs = write_file(&cr, &c, 0, buffer);
+	rs = write_file(&cr, &c, block, buffer);
 	assert(rs != -1);
 
 	// Write the new & empty inode
@@ -951,20 +816,6 @@ int srv_Creat(int pinum, int type, char *name){
 	assert(rs != -1);
 	// update parent end ---->
 
-	// int curr_inum;
-	// printf("CURR IMAP:\n");
-	// for(j = 0; j < 16; j++){
-	//  curr_inum = (j + (c.imap_index * 16));
-	//  printf("imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", j, c.imap_ptrs[j], curr_inum, c.imap_index);
-	//  // If the checkpoint region location is zero, the inum is free
-	// }
-	// printf("PARENT IMAP:\n");
-	// for(j = 0; j < 16; j++){
-	//  curr_inum = (j + (p.imap_index * 16));
-	//  printf("imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", j, p.imap_ptrs[j], curr_inum, p.imap_index);
-	//  // If the checkpoint region location is zero, the inum is free
-	// }
-
 	fsync(fd);
 	return 0;
 }
@@ -1085,8 +936,6 @@ int srv_Unlink(int pinum, char *name){
 		return -1; 
 	} 
 
-	// if(is_found) printf("FOUND!!!!!!! dir_entry.inum: %d \n", dir_entry.inum);
-
 	// Determine whether this is a file or directory we are unlinking
 	Inode_t unlink_inode;
 	MFS_DirEnt_t unlink_dir;
@@ -1137,7 +986,6 @@ int srv_Unlink(int pinum, char *name){
 				
 			// If we reach this point, we know this directory is not empty... 
 			// we can't delete a non-empty directory...
-			// printf("can't delete a non-empty directory.....\n");
 			return -1;
 			// printf("directory: count:%d ulink: inum:%d, dir:%s\n", count, unlink_dir.inum, unlink_dir.name);
 			}
@@ -1255,17 +1103,15 @@ void fs_Shutdown(){
 int srv_Shutdown(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 	// Notify client we are shutting down; this is the only method completely 
 	// tied to a client call.
-	m->rc = 0;// success!
 	rc = UDP_Write(sd, &s, (char *) m, sizeof(struct msg_r));
-	// @todo: we probably need to call fsync (or an equivalent) before exit!
 	fs_Shutdown();
-	// This will never happen....
 	return 0;
 }
 
 int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
-
 	// printf ("SERVER::rpc_func got m as %p\n",m);
+	m->rc = 0;// assume success
+
 	switch(m->method){
 		case M_Init:
 			sprintf(m->reply, "MFS_Init");
@@ -1273,15 +1119,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 			break;
 		case M_Lookup:
 			sprintf(m->reply, "MFS_Lookup");
-			// printf("SERVER:: says I am in lookup case\n");
-			// printf ("SERVER:: side name %s\n",m->name);
-			// if (m->name != NULL) {
-			//  printf ("Looking up with m->pinum %d and m->name %s\n", m->pinum, m->name);
-			// } else {
-			//  printf ("Got NULL\n");
-			// }
 			m->rc = srv_Lookup(m->pinum, m->name);
-			// printf ("In server received rc as = %d\n",m->rc);
 			break;
 		case M_Stat:
 			sprintf(m->reply, "MFS_Stat");
@@ -1311,7 +1149,7 @@ int call_rpc_func(int rc, int sd, struct sockaddr_in s, struct msg_r* m){
 		default:
 			printf("SERVER:: method does not exist\n");
 			sprintf(m->reply, "Failed");
-			// m->rc = -1;
+			m->rc = -1;
 			break;
 	}
 
@@ -1327,16 +1165,13 @@ void start_server(int argc, char *argv[]){
 	assert(sd > -1);
 
 	// printf("SERVER:: waiting in loop\n");
-
 	while (1) {
 		struct sockaddr_in s;
 		struct msg_r m;
 		int rc = UDP_Read(sd, &s, (char *) &m, sizeof(struct msg_r));
-		// printf ("SERVER::m.rc = %d\n", m.rc);
-		// printf ("SERVER::m.name = %s\n",m.name);
+
 		if (rc > 0) {
 			rc = call_rpc_func(rc, sd, s, &m);
-			// printf("SERVER:: message %d bytes (message: '%s')\n", rc, m.buffer);
 		}
 	}
 }
@@ -1349,16 +1184,10 @@ int main(int argc, char *argv[]){
 	// Disable this to test methods without running the server...
 	start_server(argc, argv);
 
-	// To manage image on disk use: open(), read(), write(), lseek(), close(), fsync()
-	// Note: Unused entries in the inode map and unused direct pointers in the inodes should 
-	// have the value 0. This condition is required for the mfscat and mfsput tools to work correctly.
-	// int inum;
-
 	// filename = "new.img";
 	// srv_Init();
 	// int rs = srv_Creat(0, MFS_REGULAR_FILE, "test");
 	// assert(rs == 0);
-
 	// rs = srv_Write(1, "START BLOCK 1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        END BLOCK 1", 0);
 	// int len = strlen("START BLOCK 1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        END BLOCK 1");
 	// printf("length of string: %d\n", len);
@@ -1376,21 +1205,8 @@ int main(int argc, char *argv[]){
 	// printf ("size of inode 1 is: %d\n",m.size);
 	// printf ("type of inode 1 is: %d\n",m.type);
 
-	// dump_log();
-
-	// srv_Lookup(0, ".");
 	// sprintf(buffer, "#include <stdio.h>\nxxxxxxxxxx\n");
 	// int rs = srv_Write(3, buffer, 0);
-
-	// int rs = srv_Unlink(6, "turtles"); // should fail
-	// int rs = srv_Unlink(0, "dir");
-	// assert(rs >= 0);
-
-	// int rs = srv_Creat(0, MFS_DIRECTORY, "awesome-dir");
-	// int rs = srv_Creat(0, MFS_REGULAR_FILE, "awesome!!");
-	// assert(rs == 0);
-	// dump_log();
-	
 	// int rc = srv_Read(3, buffer, 0);
 	// if (rc == 0) {
 	//   printf("From srv_Read\n");
