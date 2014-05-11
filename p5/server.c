@@ -174,6 +174,7 @@ void set_max_inode(){
 		}
 	}
 }
+
 // Requires read_cr first!
 int get_next_inode(Checkpoint_region_t *cr) {
 	if(max_inum >= 4096) return -1;
@@ -181,22 +182,22 @@ int get_next_inode(Checkpoint_region_t *cr) {
 	max_inum += 1;
 	return max_inum;
 
-	// // Loop through the 256 checkpoint region pointers
-	// int i = 0;
-	// // printf ("cr->eol %d\n", cr->eol_ptr);
-	// for(; i < 4096; ++i) {
-	// 	int iNodeLoc = get_inode_location(i);
-	// 	if (iNodeLoc <= 0) {
-	// 		return i;
-	// 	}
+/*	// Loop through the 256 checkpoint region pointers
+	int i = 0;
+	// printf ("cr->eol %d\n", cr->eol_ptr);
+	for(; i < 4096; ++i) {
+		int iNodeLoc = get_inode_location(i);
+		if (iNodeLoc <= 0) {
+			return i;
+		}
 
-	// 	// This Generates a good log of what is wrong!
-	// 	if (iNodeLoc == cr->eol_ptr) {
-	// 		return i;
-	// 	}
-	// }
+		// This Generates a good log of what is wrong!
+		if (iNodeLoc == cr->eol_ptr) {
+			return i;
+		}
+	}
 
-	// return -1;
+	return -1;*/
 }
 
 // Dump contents of the current file
@@ -418,11 +419,47 @@ int init_disk(){
 	// Write the imap
 	rs = write_imap(&cr, &c);
 	assert(rs != -1);
-	// update child end ---->
 
 	// Update the checkpoint region
 	rs = write_cr(&cr, &c);
 	assert(rs != -1);
+	// update child end ---->
+
+	// We are not done until an imap exists for every CR.
+	// 1-generate a clean / blank imap.
+	int imap_ptrs[16];
+	i = 0;
+	for (; i < 16; i++) {
+		 imap_ptrs[i] = 0;
+	}
+
+	// 2-write a blank imap for each CR so future methods have something to read.
+	i = 1;
+	for (; i < 256; ++i) {
+		lseek(fd, cr.eol_ptr, SEEK_SET);
+		if(write(fd, &imap_ptrs, sizeof(int) * 16) < 0) { 
+			printf("failed to init!!!!!!!\n");
+			exit(0);
+		}
+
+		// Our new imap piece loc which we will put in the checkpoint region
+		cr.ckpr_ptrs[i] = cr.eol_ptr;
+		cr.eol_ptr += (sizeof(int) * 16); // Size of imap
+	}
+
+	// Manually set the position of the first imap:
+	cr.ckpr_ptrs[0] = c.imap_loc;
+
+	// Write the entire checkpoitn region
+	if(write(fd, &cr.ckpr_ptrs[0], sizeof(int) * 256) < 0) { 
+		return -1; 
+	}
+
+	// Manually update the checkpoint region - EOL pointer:
+	lseek(fd, 0, SEEK_SET);
+	if (write(fd, &cr.eol_ptr, sizeof(int)) < 0) { 
+		return -1; 
+	}
 
 	fsync(fd);
 	return 0;
