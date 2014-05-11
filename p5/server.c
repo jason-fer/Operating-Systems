@@ -10,6 +10,7 @@ char* filename = NULL;
 int* port;
 int fd = -1;
 int did_init = 0;
+int curr_inum = -1;
 
 int get_inode_location(int inum);
 
@@ -164,49 +165,51 @@ int write_file(Checkpoint_region_t *cr, Idata_t *c, int block, char *d){
 
 // Requires read_cr first!
 int get_next_inode(Checkpoint_region_t *cr) {
-  /* // Loop through the 256 checkpoint region pointers */
-  /*   Idata_t temp; */
-  /*   int i; */
-  /*   int j; */
-  /*   int inum = -1; */
-  /*   for (i = 0; i < 256; i++){ */
-  /*   	if(inum >= 0) break; */
-  /*   	// Read in the imap piece */
-  /*   	lseek(fd, cr->ckpr_ptrs[i], SEEK_SET); */
-  /*   	if(read(fd, &temp.imap_ptrs, sizeof(int) * 16) < 0) {  */
-  /*   		return -1;  */
-  /*   	} */
-  /*   	// Check each of the 16 pointers in the imap piece */
-  /*   	for(j = 0; j < 16; j++){ */
-  /*   		int tmp_inum = (j + (i * 16)); */
-  /*   		// printf("ckpr_ptrs[%d]:%d imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", i, cr->ckpr_ptrs[i],j,temp.imap_ptrs[j], tmp_inum, i); */
-  /*   		// If the checkpoint region location is zero, the inum is free */
-  /*   		if(temp.imap_ptrs[j] == 0) { */
-  /*   			inum = tmp_inum; */
-  /*   			break; */
-  /*   		} */
-  /*   	} */
-  /*   } */
-
-  /*   return inum; */
-
-  int i = 0;
-  /* printf ("cr->eol %d\n", cr->eol_ptr); */
-  for(; i < 4096; ++i) {
-	int iNodeLoc = get_inode_location(i);
-	if (iNodeLoc <= 0) {
-	  return i;
-	} 
-
-	// printf ("iNodeLoc %d for i= %d\n",iNodeLoc, i);
-	// This Generates a good log of what is wrong!
-
-	if (iNodeLoc == cr->eol_ptr) {
-	  return i;
+	// Loop through the 256 checkpoint region pointers
+/*	Idata_t temp;
+	int i;
+	int j;
+	int inum = -1;
+	for (i = 0; i < 256; i++){
+		if(inum >= 0) break;
+		// Read in the imap piece
+		lseek(fd, cr->ckpr_ptrs[i], SEEK_SET);
+		if(read(fd, &temp.imap_ptrs, sizeof(int) * 16) < 0) {
+			printf("failed to read\n");
+			return -1; 
+		}
+		// Check each of the 16 pointers in the imap piece
+		for(j = 0; j < 16; j++){
+			int tmp_inum = (j + (i * 16));
+			// printf("ckpr_ptrs[%d]:%d imap_ptrs[%d]:%d inum:%d, imap piece#:%d \n", i, cr->ckpr_ptrs[i],j,temp.imap_ptrs[j], tmp_inum, i);
+			// If the checkpoint region location is zero, the inum is free
+			if(temp.imap_ptrs[j] == 0) {
+				inum = tmp_inum;
+				break;
+			}
+		}
 	}
-  }
 
-  return -1;
+	printf("failed to find anything\n");
+	return inum;
+*/
+	int i = 0;
+	// printf ("cr->eol %d\n", cr->eol_ptr);
+	for(; i < 4096; ++i) {
+		int iNodeLoc = get_inode_location(i);
+		if (iNodeLoc <= 0) {
+			return i;
+		}
+
+		// This Generates a good log of what is wrong!
+		if (iNodeLoc == cr->eol_ptr) {
+			printf ("iNodeLoc %d for i= %d, vs eol:%d \n", iNodeLoc, i, cr->eol_ptr);
+			return i;
+		}
+	}
+
+	printf("failed to find anything\n");
+	return -1;
 }
 
 // Dump contents of the current file
@@ -357,7 +360,7 @@ int get_inode_location(int inum) {
 	Idata_t c;
 	rs = read_imap(inum, &cr, &c);
 	if(c.inode_loc <= 0 || rs == -1) {
-	  return -1;
+		return -1;
 	}
 
 	return c.inode_loc;
@@ -367,8 +370,8 @@ int init_disk(){
 	int i, j, rs;
 	fd = open(filename, O_RDWR | O_CREAT, S_IRWXU);
 	if (fd < 0) {
-	   printf("Open error\n");
-	   exit(1);
+		 printf("Open error\n");
+		 exit(1);
 	}
 
 	Checkpoint_region_t cr;
@@ -377,7 +380,7 @@ int init_disk(){
 	// init CR to zero
 	i = 0;
 	for (; i < 256; ++i) {
-	   cr.ckpr_ptrs[i] = 0;
+		 cr.ckpr_ptrs[i] = 0;
 	}
 
 	Idata_t c;
@@ -388,7 +391,7 @@ int init_disk(){
 	// Set up imap
 	i = 0;
 	for (; i < 16; i++) {
-	   c.imap_ptrs[i] = 0;
+		 c.imap_ptrs[i] = 0;
 	}
 
 	// Set up inode
@@ -397,15 +400,15 @@ int init_disk(){
 	// Set the other inode block pointers to zero
 	i = 0;
 	for (; i < 14; i++) {
-	   c.inode_ptrs[i] = 0;
+		 c.inode_ptrs[i] = 0;
 	}
 
 	// Set up directory entries
 	MFS_DirEnt_t dir_entries[64];
 	j = 0;
 	for (; i < 64; i++) {
-	   dir_entries[i].name[0] = '\0';
-	   dir_entries[i].inum    = -1;
+		 dir_entries[i].name[0] = '\0';
+		 dir_entries[i].inum    = -1;
 	}
 
 	dir_entries[0].name[0] = '.';
@@ -711,6 +714,7 @@ int srv_Creat(int pinum, int type, char *name){
 
 	// Determine the inode to assign
 	int inum = get_next_inode(&cr);
+	// assert(inum != -1);
 	if(inum == -1) return -1;
 
 	// Set up our new inode & imap struct
@@ -1212,10 +1216,10 @@ void BigDirTest(){
 	// Create 896 files
 	for(i = 0; i < MAX_FILES_PER_DIR; ++i){
 		sprintf(fname, "%d", i);
-		
+		curr_inum = i;
 		rs = srv_Creat(inum, MFS_REGULAR_FILE, fname);
 		if(rs < 0) {
-			printf("Failed to create fname:%s, inum:%d\n", fname, inum);
+			printf("Failed to create rs:%d fname:%s, inum:%d, %i\n", rs, fname, inum, i);
 			break;
 		}
 	}
@@ -1226,7 +1230,7 @@ void BigDirTest(){
 		srv_Lookup(inum, fname);
 	}
 
-	dump_log();
+	// dump_log();
 	exit(0);
 }
 
