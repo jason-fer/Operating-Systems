@@ -54,7 +54,8 @@ int read_imap(int inum, Checkpoint_region_t *cr, Idata_t *c){
 	if(read(fd, &c->imap_ptrs, sizeof(int) * 16) < 0) {
 		return -1; 
 	}
-	// Get position of inode
+	
+    // Get position of inode
 	c->inode_loc = c->imap_ptrs[c->inode_index];
 	// This breaks stuff if this is an imap for a NEW inodet that doesn't exist yet.
 	// if (c->inode_loc <= 0 || c->inode_loc > cr->eol_ptr) { return -1;}
@@ -193,11 +194,13 @@ int get_next_inode(Checkpoint_region_t *cr) {
   /* printf ("cr->eol %d\n", cr->eol_ptr); */
   for(; i < 4096; ++i) {
     int iNodeLoc = get_inode_location(i);
-    if (iNodeLoc < 0) {
+    if (iNodeLoc <= 0) {
       return i;
     } 
 
-    /* printf ("iNodeLoc %d for i= %d\n",iNodeLoc, i); */
+    // printf ("iNodeLoc %d for i= %d\n",iNodeLoc, i);
+    // This Generates a good log of what is wrong!
+
     if (iNodeLoc == cr->eol_ptr) {
       return i;
     }
